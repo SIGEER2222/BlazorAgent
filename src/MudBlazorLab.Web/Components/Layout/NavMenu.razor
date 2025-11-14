@@ -1,10 +1,39 @@
-﻿
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@using MudBlazorLab.Components.Services
+@using MudBlazorLab.Components.Components
+
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-    <MudNavLink Href="counter" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Add">Counter</MudNavLink>
-    
-    <MudNavLink Href="weather" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Weather</MudNavLink>
-
+      <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="profile" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Profile</MudNavLink>
+        </Authorized>
+    </AuthorizeView>
+    <PolicyGuard Policy="@AuthPolicies.RequireAdmin">
+        <MudNavLink Href="admin" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Lock">Admin</MudNavLink>
+    </PolicyGuard>
+    <PolicyGuard Policy="@AuthPolicies.RequireManagerOrAdmin">
+        <MudNavLink Href="reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assessment">Reports</MudNavLink>
+    </PolicyGuard>
+    <PolicyGuard Policy="@AuthPolicies.RequireEditor">
+        <MudNavLink Href="editor" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Edit">Editor</MudNavLink>
+    </PolicyGuard>
+    <AuthorizeView>
+        <NotAuthorized>
+            <MudNavLink Href="login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login">Login</MudNavLink>
+        </NotAuthorized>
+        <Authorized>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="Logout" StartIcon="@Icons.Material.Filled.Logout">Logout</MudButton>
+        </Authorized>
+    </AuthorizeView>
 </MudNavMenu>
 
-
+@code {
+    async Task Logout()
+    {
+        var ok = await JS.InvokeAsync<bool>("authLogout");
+        if (!ok) return;
+        Nav.NavigateTo("/", true);
+    }
+}

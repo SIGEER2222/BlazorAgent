@@ -1,6 +1,14 @@
-﻿<Router AppAssembly="typeof(Program).Assembly">
+<Router AppAssembly="typeof(Program).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                <MudAlert Severity="Severity.Warning">需要登录后访问</MudAlert>
+                <MudLink Href="/login">前往登录</MudLink>
+            </NotAuthorized>
+            <Authorizing>
+                <MudProgressCircular Indeterminate="true" />
+            </Authorizing>
+        </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>

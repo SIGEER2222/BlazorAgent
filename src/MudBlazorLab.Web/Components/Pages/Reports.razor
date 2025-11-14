@@ -1,0 +1,8 @@
+@page "/reports"
+@using MudBlazorLab.Components.Services
+@attribute [Authorize(Policy = AuthPolicies.RequireManagerOrAdmin)]
+
+<PageTitle>Reports</PageTitle>
+
+<MudText Typo="Typo.h4">报表页</MudText>
+<MudText Typo="Typo.body1">仅 Manager 或 Admin 可访问</MudText>

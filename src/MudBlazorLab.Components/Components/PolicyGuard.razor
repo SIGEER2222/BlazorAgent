@@ -1,0 +1,16 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+<AuthorizeView Policy="@Policy">
+    <Authorized>
+        @ChildContent
+    </Authorized>
+    <NotAuthorized>
+        @NotAuthorizedContent
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Parameter] public string Policy { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? NotAuthorizedContent { get; set; }
+}

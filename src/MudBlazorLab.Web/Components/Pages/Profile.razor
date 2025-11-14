@@ -1,0 +1,17 @@
+@page "/profile"
+@attribute [Authorize]
+
+<PageTitle>Profile</PageTitle>
+
+<AuthorizeView Context="ctx">
+    <Authorized>
+        <MudText Typo="Typo.h5">用户信息</MudText>
+        <MudList T="string">
+            <MudListItem T="string">用户名：@ctx.User.Identity?.Name</MudListItem>
+            <MudListItem T="string">角色：@string.Join(", ", ctx.User.Claims.Where(c=>c.Type==System.Security.Claims.ClaimTypes.Role).Select(c=>c.Value))</MudListItem>
+        </MudList>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Warning">未登录</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>

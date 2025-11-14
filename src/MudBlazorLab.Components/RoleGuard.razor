@@ -1,0 +1,15 @@
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+
+<AuthorizeView Roles="@Role">
+    <Authorized>
+        <MudText Typo="Typo.body1">已授权：@Role</MudText>
+    </Authorized>
+    <NotAuthorized>
+        <MudText Typo="Typo.body1">未授权：@Role</MudText>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Parameter] public string Role { get; set; } = string.Empty;
+}

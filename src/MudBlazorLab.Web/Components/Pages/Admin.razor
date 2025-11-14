@@ -1,0 +1,18 @@
+@page "/admin"
+@using MudBlazorLab.Components.Services
+@attribute [Authorize(Policy = AuthPolicies.RequireAdmin)]
+@inject AuthenticationStateProvider Auth
+
+<PageTitle>Admin</PageTitle>
+
+<MudText Typo="Typo.h4">管理页</MudText>
+<MudText Typo="Typo.body1" Class="mt-2">只有 Admin 角色可访问</MudText>
+
+<AuthorizeView Context="ctx">
+    <Authorized>
+        <MudAlert Severity="Severity.Success">@ctx.User.Identity?.Name</MudAlert>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Error">未授权</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>

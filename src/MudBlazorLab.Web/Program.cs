@@ -1,5 +1,9 @@
 using MudBlazor.Services;
 using MudBlazorLab.Web.Components;
+using MudBlazorLab.Components.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +13,24 @@ builder.Services.AddMudServices();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddHttpClient();
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/login";
+        options.LogoutPath = "/logout";
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthPolicies.RequireAdmin, policy => policy.RequireRole("Admin"));
+    options.AddPolicy(AuthPolicies.RequireManagerOrAdmin, policy => policy.RequireRole("Manager", "Admin"));
+    options.AddPolicy(AuthPolicies.RequireEditor, policy => policy.RequireRole("Editor"));
+});
+
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
@@ -22,10 +44,37 @@ if (!app.Environment.IsDevelopment()) {
 app.UseHttpsRedirection();
 
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapPost("/auth/login", async (HttpContext ctx, LoginDto dto) =>
+{
+    var principal = UserService.SignIn(dto.Username, dto.Password);
+    if (principal == null) return Results.Unauthorized();
+    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+    return Results.Ok(new { name = principal.Identity!.Name });
+}).DisableAntiforgery();
+
+app.MapPost("/auth/login-form", async (HttpContext ctx) =>
+{
+    var form = await ctx.Request.ReadFormAsync();
+    var username = form["Username"].ToString();
+    var password = form["Password"].ToString();
+    var principal = UserService.SignIn(username, password);
+    if (principal == null) return Results.Redirect("/login?error=1");
+    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+    return Results.Redirect("/");
+}).DisableAntiforgery();
+
+app.MapPost("/auth/logout", async (HttpContext ctx) =>
+{
+    await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.Ok();
+}).DisableAntiforgery();
 
 app.Run();

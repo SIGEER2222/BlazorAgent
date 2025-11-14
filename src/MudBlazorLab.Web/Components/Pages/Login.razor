@@ -1,0 +1,36 @@
+@page "/login"
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>登录</PageTitle>
+
+<MudPaper Class="pa-6" Elevation="1" MaxWidth="400px">
+    <MudText Typo="Typo.h5" Class="mb-4">登录</MudText>
+    <form method="post" action="/auth/login-form">
+        <div class="mb-2">
+            <label for="username">用户名</label>
+            <input id="username" name="Username" class="mud-input-control" />
+        </div>
+        <div class="mb-2">
+            <label for="password">密码</label>
+            <input id="password" name="Password" type="password" class="mud-input-control" />
+        </div>
+        <button type="submit" class="mud-button-root mud-button-filled mud-button-filled-primary">登录</button>
+        <MudText Typo="Typo.caption" Class="mt-4 d-block">示例账户：admin@example.com / user@example.com，密码：P@ssw0rd!</MudText>
+    </form>
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
+    }
+ </MudPaper>
+
+@code {
+    MudForm? _form;
+    LoginVm _model = new();
+    string? _error;
+    bool _busy;
+
+    class LoginVm { public string Username { get; set; } = string.Empty; public string Password { get; set; } = string.Empty; }
+
+    async Task Submit() { }
+}
