@@ -1,0 +1,74 @@
+@page "/inventory/movements"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>库存流水</PageTitle>
+
+<MudPaper>
+    <AutoDataGrid @ref="_grid" TItem="MovementVm" Title="库存流水" ServerData="LoadData" Height="70vh">
+        <Toolbar>
+            <MudNumericField @bind-Value="_warehouseId" Label="仓库Id" Immediate="true" />
+            <MudTextField @bind-Value="_productCode" Label="产品代码" Immediate="true" />
+            <MudDatePicker @bind-Date="_start" Label="开始日期" />
+            <MudDatePicker @bind-Date="_end" Label="结束日期" />
+            <MudButton Variant="Variant.Outlined" OnClick="Reload" StartIcon="@Icons.Material.Filled.Search">查询</MudButton>
+            <MudSpacer />
+            <MudLink Href="@ExportHref" StartIcon="@Icons.Material.Filled.Download">导出 Excel</MudLink>
+        </Toolbar>
+    </AutoDataGrid>
+</MudPaper>
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Data.InventoryDb Db { get; set; } = default!;
+
+    AutoDataGrid<MovementVm>? _grid;
+    int? _warehouseId; string? _productCode; DateTime? _start; DateTime? _end;
+
+    class MovementVm {
+        public int Id { get; set; }
+        public int WarehouseId { get; set; }
+        public string WarehouseName { get; set; } = string.Empty;
+        public int ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public MovementType Type { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal UnitCost { get; set; }
+        public DateTime OccurredAt { get; set; }
+        public string? Reference { get; set; }
+    }
+
+    Task<GridData<MovementVm>> LoadData(GridState<MovementVm> state)
+    {
+        var page = state.Page + 1; var pageSize = state.PageSize;
+        var q = Db.Movements;
+        if (_warehouseId is int w) q = q.Where(x => x.WarehouseId == w);
+        if (!string.IsNullOrWhiteSpace(_productCode))
+        {
+            var p = Db.Db.Queryable<global::Inventory.Domain.Entities.Product>().First(x => x.Code == _productCode);
+            if (p != null) q = q.Where(x => x.ProductId == p.Id); else q = q.Where(x => false);
+        }
+        if (_start is DateTime s) q = q.Where(x => x.OccurredAt >= s);
+        if (_end is DateTime e) q = q.Where(x => x.OccurredAt <= e);
+        int total = 0;
+        var items = q.OrderBy(x => x.Id).ToPageList(page, pageSize, ref total);
+        var prods = Db.Db.Queryable<global::Inventory.Domain.Entities.Product>().Where(x=> items.Select(i=>i.ProductId).Contains(x.Id)).ToList();
+        var whs = Db.Db.Queryable<global::Inventory.Domain.Entities.Warehouse>().Where(x=> items.Select(i=>i.WarehouseId).Contains(x.Id)).ToList();
+        var vms = items.Select(i => new MovementVm {
+            Id = i.Id,
+            WarehouseId = i.WarehouseId,
+            WarehouseName = whs.FirstOrDefault(x=>x.Id==i.WarehouseId)?.Name ?? i.WarehouseId.ToString(),
+            ProductId = i.ProductId,
+            ProductName = prods.FirstOrDefault(x=>x.Id==i.ProductId)?.Name ?? i.ProductId.ToString(),
+            Type = i.Type,
+            Quantity = i.Quantity,
+            UnitCost = i.UnitCost,
+            OccurredAt = i.OccurredAt,
+            Reference = i.Reference
+        }).ToList();
+        return Task.FromResult(new GridData<MovementVm> { Items = vms, TotalItems = total });
+    }
+
+    void Reload() => _grid?.Reload();
+    string ExportHref => $"/reports/inventory/movements.xlsx?warehouseId={_warehouseId}&productCode={Uri.EscapeDataString(_productCode ?? string.Empty)}&start={_start:yyyy-MM-dd}&end={_end:yyyy-MM-dd}";
+}
+@attribute [Authorize(Roles="Manager,Admin")]

@@ -1,0 +1,69 @@
+@page "/purchase/receipts"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>采购收货</PageTitle>
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.h5">采购收货</MudText>
+    <MudPaper>
+        <AutoDataGrid @ref="_orders" TItem="PurchaseOrder" Title="待收货订单" ServerData="LoadOrders" Height="40vh" RowClick="OnOrderSelected">
+        </AutoDataGrid>
+    </MudPaper>
+    <MudPaper Class="mt-4">
+        <AutoDataGrid @ref="_lines" TItem="PurchaseOrderLine" Title="订单明细" ServerData="LoadLines" Height="40vh">
+            <Toolbar>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Receive" StartIcon="@Icons.Material.Filled.Inventory">收货并入库</MudButton>
+            </Toolbar>
+        </AutoDataGrid>
+    </MudPaper>
+</MudStack>
+
+@attribute [Authorize(Roles="Manager,Admin")]
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.PurchaseService Svc { get; set; } = default!;
+
+    AutoDataGrid<PurchaseOrder>? _orders;
+    AutoDataGrid<PurchaseOrderLine>? _lines;
+    int? _currentId;
+
+    Task<GridData<PurchaseOrder>> LoadOrders(GridState<PurchaseOrder> state)
+    {
+        var page = state.Page + 1; var size = state.PageSize;
+        var q = Svc.QueryAsync(page, size, null);
+        return q.ContinueWith(t =>
+        {
+            var items = t.Result.items.Where(x => x.Status == PurchaseOrderStatus.Approved).ToList();
+            return new GridData<PurchaseOrder> { Items = items, TotalItems = items.Count };
+        });
+    }
+
+    Task<GridData<PurchaseOrderLine>> LoadLines(GridState<PurchaseOrderLine> state)
+    {
+        var page = state.Page + 1; var size = state.PageSize;
+        if (_currentId is not int id)
+            return Task.FromResult(new GridData<PurchaseOrderLine> { Items = new List<PurchaseOrderLine>(), TotalItems = 0 });
+        return Svc.GetLinesAsync(id).ContinueWith(t =>
+        {
+            var items = t.Result;
+            return new GridData<PurchaseOrderLine> { Items = items, TotalItems = items.Count };
+        });
+    }
+
+    void OnOrderSelected(DataGridRowClickEventArgs<PurchaseOrder> e)
+    {
+        _currentId = e.Item.Id;
+        _lines?.Reload();
+    }
+
+    async Task Receive()
+    {
+        if (_currentId is int id)
+        {
+            await Svc.ReceiveAsync(id);
+            _orders?.Reload();
+            _lines?.Reload();
+        }
+    }
+}

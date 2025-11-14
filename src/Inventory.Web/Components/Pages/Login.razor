@@ -1,0 +1,62 @@
+@page "/login"
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>登录</PageTitle>
+
+<MudGrid Justify="Justify.Center" Style="min-height:70vh;">
+    <MudItem xs="12" sm="8" md="4">
+        <MudPaper Class="pa-6" Elevation="6">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h5">欢迎登录</MudText>
+                <MudDivider />
+                <MudForm @ref="_form">
+                    <MudTextField T="string" Label="用户名" @bind-Value="_model.Username" InputType="InputType.Text" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountCircle" Required="true" />
+                    <MudTextField T="string" Label="密码" @bind-Value="_model.Password" InputType="InputType.Password" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" Required="true" />
+                    <MudStack Row="true" Spacing="1">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit" StartIcon="@Icons.Material.Filled.Login">登录</MudButton>
+                        <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="@(()=>Nav.NavigateTo("/"))" StartIcon="@Icons.Material.Filled.Home">返回首页</MudButton>
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Class="mt-2 d-block">示例账户：admin@example.com / user@example.com / manager@example.com / editor@example.com，密码：P@ssw0rd!</MudText>
+                </MudForm>
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    </MudGrid>
+
+@code {
+    MudForm? _form;
+    LoginVm _model = new();
+    string? _error;
+    bool _busy;
+
+    class LoginVm { public string Username { get; set; } = string.Empty; public string Password { get; set; } = string.Empty; }
+
+    protected override void OnInitialized()
+    {
+        var uri = new Uri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        if (query["error"] == "1")
+            _error = "用户名或密码错误";
+    }
+
+    async Task Submit()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_form.IsValid) return;
+        }
+        _busy = true;
+        var ok = await JS.InvokeAsync<bool>("authLogin", _model.Username, _model.Password);
+        _busy = false;
+        if (ok)
+            Nav.NavigateTo("/", true);
+        else
+            _error = "用户名或密码错误";
+    }
+}

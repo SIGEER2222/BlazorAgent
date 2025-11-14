@@ -1,0 +1,67 @@
+@page "/master-data/categories"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>品类</PageTitle>
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.h5">品类</MudText>
+    <MudPaper>
+        <AutoDataGrid @ref="_grid" TItem="Category" Title="品类列表" ServerData="LoadData" Height="70vh">
+            <Toolbar>
+                <MudTextField @bind-Value="_keyword" Placeholder="搜索名称" Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewItem" StartIcon="@Icons.Material.Filled.Add">新建</MudButton>
+            </Toolbar>
+            <RowActions Context="item">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>Edit(item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(()=>Delete(item))" />
+            </RowActions>
+        </AutoDataGrid>
+    </MudPaper>
+</MudStack>
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.CategoryService Svc { get; set; } = default!;
+
+    AutoDataGrid<Category>? _grid;
+    string? _keyword;
+
+    async Task<GridData<Category>> LoadData(GridState<Category> state)
+    {
+        var page = state.Page + 1;
+        var pageSize = state.PageSize;
+        var (items, total) = await Svc.QueryAsync(page, pageSize, _keyword);
+        return new GridData<Category> { Items = items.ToList(), TotalItems = total };
+    }
+
+    Category _editing = new();
+    bool _dialogOpen;
+
+    void NewItem() { _editing = new Category { Enabled = true }; _dialogOpen = true; }
+    void Edit(Category p) { _editing = new Category { Id = p.Id, Name = p.Name, Enabled = p.Enabled }; _dialogOpen = true; }
+    async Task Delete(Category p) { await Svc.DeleteAsync(p.Id); _grid?.Reload(); }
+}
+
+<MudDialog IsVisible="_dialogOpen" DisableBackdropClick="true">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_editing.Name" Label="名称" Required="true" />
+            <MudSwitch T="bool" Checked="@_editing.Enabled" CheckedChanged="@OnCheckedChanged">启用</MudSwitch>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(()=>_dialogOpen=false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">保存</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    Task OnCheckedChanged(bool v) { _editing.Enabled = v; return Task.CompletedTask; }
+    async Task Save()
+    {
+        if (_editing.Id == 0) await Svc.CreateAsync(_editing); else await Svc.UpdateAsync(_editing);
+        _dialogOpen = false; _grid?.Reload();
+    }
+}
+@attribute [Authorize(Roles="Editor,Manager,Admin")]

@@ -19,7 +19,11 @@ public static class PermissionRegistry
         ["ProcessInspection"] = new[] { "Manager", "Admin" },
         ["ShippingInspection"] = new[] { "Manager", "Admin" },
         ["ShiftInspection"] = new[] { "User", "Manager", "Admin" },
-        ["RandomInspection"] = new[] { "User", "Manager", "Admin" }
+        ["RandomInspection"] = new[] { "User", "Manager", "Admin" },
+        ["MasterData"] = new[] { "Editor", "Manager", "Admin" },
+        ["Purchase"] = new[] { "Manager", "Admin" },
+        ["Sales"] = new[] { "Manager", "Admin" },
+        ["Inventory"] = new[] { "Manager", "Admin" }
     };
 }
 

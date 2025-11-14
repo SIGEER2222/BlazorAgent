@@ -1,0 +1,72 @@
+@page "/master-data/customers"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>客户</PageTitle>
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.h5">客户资料</MudText>
+    <MudPaper>
+        <AutoDataGrid @ref="_grid" TItem="Customer" Title="客户列表" ServerData="LoadData" Height="70vh">
+            <Toolbar>
+                <MudTextField @bind-Value="_keyword" Placeholder="搜索代码/名称" Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewItem" StartIcon="@Icons.Material.Filled.Add">新建</MudButton>
+            </Toolbar>
+            <RowActions Context="item">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>Edit(item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(()=>Delete(item))" />
+            </RowActions>
+        </AutoDataGrid>
+    </MudPaper>
+</MudStack>
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.CustomerService Svc { get; set; } = default!;
+
+    AutoDataGrid<Customer>? _grid;
+    string? _keyword;
+
+    async Task<GridData<Customer>> LoadData(GridState<Customer> state)
+    {
+        var page = state.Page + 1;
+        var pageSize = state.PageSize;
+        var (items, total) = await Svc.QueryAsync(page, pageSize, _keyword);
+        return new GridData<Customer> { Items = items.ToList(), TotalItems = total };
+    }
+
+    Customer _editing = new();
+    bool _dialogOpen;
+
+    void NewItem() { _editing = new Customer { Enabled = true }; _dialogOpen = true; }
+    void Edit(Customer p) { _editing = new Customer { Id = p.Id, Code = p.Code, Name = p.Name, Contact = p.Contact, Phone = p.Phone, Email = p.Email, Address = p.Address, Enabled = p.Enabled }; _dialogOpen = true; }
+    async Task Delete(Customer p) { await Svc.DeleteAsync(p.Id); _grid?.Reload(); }
+}
+
+<MudDialog IsVisible="_dialogOpen" DisableBackdropClick="true">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_editing.Code" Label="代码" Required="true" />
+            <MudTextField @bind-Value="_editing.Name" Label="名称" Required="true" />
+            <MudTextField @bind-Value="_editing.Contact" Label="联系人" />
+            <MudTextField @bind-Value="_editing.Phone" Label="电话" />
+            <MudTextField @bind-Value="_editing.Email" Label="邮箱" />
+            <MudTextField @bind-Value="_editing.Address" Label="地址" />
+            <MudSwitch T="bool" Checked="@_editing.Enabled" CheckedChanged="@OnCheckedChanged">启用</MudSwitch>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(()=>_dialogOpen=false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">保存</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    Task OnCheckedChanged(bool v) { _editing.Enabled = v; return Task.CompletedTask; }
+    async Task Save()
+    {
+        if (_editing.Id == 0) await Svc.CreateAsync(_editing); else await Svc.UpdateAsync(_editing);
+        _dialogOpen = false; _grid?.Reload();
+    }
+}
+@attribute [Authorize(Roles="Editor,Manager,Admin")]

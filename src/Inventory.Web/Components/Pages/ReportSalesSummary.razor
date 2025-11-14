@@ -1,0 +1,41 @@
+@page "/reports/sales-summary"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>销售汇总</PageTitle>
+
+<MudPaper>
+    <AutoDataGrid TItem="SalesSummaryVm" Title="销售汇总" ServerData="LoadData" Height="70vh">
+        <Toolbar>
+            <MudTextField @bind-Value="_customer" Label="客户代码" Immediate="true" />
+            <MudDatePicker @bind-Date="_start" Label="开始日期" />
+            <MudDatePicker @bind-Date="_end" Label="结束日期" />
+            <MudButton Variant="Variant.Outlined" OnClick="Reload" StartIcon="@Icons.Material.Filled.Search">查询</MudButton>
+            <MudSpacer />
+            <MudLink Href="@ExportHref" StartIcon="@Icons.Material.Filled.Download">导出</MudLink>
+        </Toolbar>
+    </AutoDataGrid>
+</MudPaper>
+
+@attribute [Authorize(Roles="Manager,Admin")]
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Data.InventoryDb Db { get; set; } = default!;
+    AutoDataGrid<SalesSummaryVm>? _grid;
+    string? _customer; DateTime? _start; DateTime? _end;
+    class SalesSummaryVm { public string CustomerCode { get; set; } = string.Empty; public decimal Quantity { get; set; } public decimal Revenue { get; set; } }
+    Task<GridData<SalesSummaryVm>> LoadData(GridState<SalesSummaryVm> state)
+    {
+        var orders = Db.SalesOrders;
+        if (!string.IsNullOrWhiteSpace(_customer)) orders = orders.Where(x => x.CustomerCode == _customer);
+        if (_start is DateTime s) orders = orders.Where(x => x.CreatedAt >= s);
+        if (_end is DateTime e) orders = orders.Where(x => x.CreatedAt <= e);
+        var ids = orders.Select(x => x.Id).ToList();
+        var lines = Db.SalesOrderLines.Where(x => ids.Contains(x.SalesOrderId)).ToList();
+        var grouped = lines.GroupBy(x => Db.SalesOrders.First(o => o.Id == x.SalesOrderId).CustomerCode)
+            .Select(g => new SalesSummaryVm { CustomerCode = g.Key, Quantity = g.Sum(x => x.Quantity), Revenue = g.Sum(x => x.Quantity * x.UnitPrice) }).ToList();
+        return Task.FromResult(new GridData<SalesSummaryVm> { Items = grouped, TotalItems = grouped.Count });
+    }
+    void Reload() => _grid?.Reload();
+    string ExportHref => $"/reports/sales-summary.xlsx?customer={Uri.EscapeDataString(_customer ?? string.Empty)}&start={_start:yyyy-MM-dd}&end={_end:yyyy-MM-dd}";
+}

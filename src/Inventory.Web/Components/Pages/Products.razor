@@ -1,0 +1,96 @@
+@page "/master-data/products"
+@using global::Inventory.Domain.Entities
+@* 注入在代码段中声明 *@
+
+<PageTitle>产品资料</PageTitle>
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.h5">产品资料</MudText>
+    <MudPaper>
+        <AutoDataGrid @ref="_grid" TItem="global::Inventory.Domain.Entities.Product" Title="产品列表" ServerData="LoadData" Height="70vh">
+            <Toolbar>
+                <MudTextField @bind-Value="_keyword" Placeholder="搜索代码/名称" Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewProduct" StartIcon="@Icons.Material.Filled.Add">新建</MudButton>
+            </Toolbar>
+            <RowActions Context="item">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>Edit(item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(()=>Delete(item))" />
+            </RowActions>
+        </AutoDataGrid>
+    </MudPaper>
+</MudStack>
+
+@code {
+    AutoDataGrid<global::Inventory.Domain.Entities.Product>? _grid;
+    string? _keyword;
+
+    async Task<GridData<global::Inventory.Domain.Entities.Product>> LoadData(GridState<global::Inventory.Domain.Entities.Product> state)
+    {
+        var page = state.Page + 1;
+        var pageSize = state.PageSize;
+        var (items, total) = await ProductSvc.QueryAsync(page, pageSize, _keyword);
+        return new GridData<global::Inventory.Domain.Entities.Product> { Items = items.ToList(), TotalItems = total };
+    }
+
+    global::Inventory.Domain.Entities.Product _editing = new();
+    bool _dialogOpen;
+
+    void NewProduct()
+    {
+        _editing = new Product { Enabled = true };
+        _dialogOpen = true;
+    }
+
+    void Edit(global::Inventory.Domain.Entities.Product p)
+    {
+        _editing = new global::Inventory.Domain.Entities.Product { Id = p.Id, Code = p.Code, Name = p.Name, Category = p.Category, Unit = p.Unit, Enabled = p.Enabled };
+        _dialogOpen = true;
+    }
+
+    async Task Delete(global::Inventory.Domain.Entities.Product p)
+    {
+        await ProductSvc.DeleteAsync(p.Id);
+        _grid?.Reload();
+    }
+}
+
+<MudDialog IsVisible="_dialogOpen" DisableBackdropClick="true">
+    <DialogContent>
+        <div data-testid="product-dialog">
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_editing.Code" Label="代码" Placeholder="代码" Required="true" InputAttributes="new() { { \"data-testid\", \"prod-code\" } }" />
+            <MudTextField @bind-Value="_editing.Name" Label="名称" Placeholder="名称" Required="true" InputAttributes="new() { { \"data-testid\", \"prod-name\" } }" />
+            <MudTextField @bind-Value="_editing.Category" Label="分类" Placeholder="分类" />
+            <MudTextField @bind-Value="_editing.Unit" Label="单位" Placeholder="单位" />
+            <MudSwitch T="bool" Checked="@_editing.Enabled" CheckedChanged="@OnCheckedChanged">启用</MudSwitch>
+        </MudStack>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(()=>_dialogOpen=false)">取消</MudButton>
+        <div data-testid="prod-save-btn"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">保存</MudButton></div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.ProductService ProductSvc { get; set; } = default!;
+
+    async Task Save()
+    {
+        if (_editing.Id == 0)
+            await ProductSvc.CreateAsync(_editing);
+        else
+            await ProductSvc.UpdateAsync(_editing);
+        _dialogOpen = false;
+        _grid?.Reload();
+    }
+
+    Task OnCheckedChanged(bool v)
+    {
+        _editing.Enabled = v;
+        return Task.CompletedTask;
+    }
+}
+@attribute [Authorize(Roles="Editor,Manager,Admin")]

@@ -1,0 +1,41 @@
+@page "/reports/purchase-summary"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>采购汇总</PageTitle>
+
+<MudPaper>
+    <AutoDataGrid TItem="PurchaseSummaryVm" Title="采购汇总" ServerData="LoadData" Height="70vh">
+        <Toolbar>
+            <MudTextField @bind-Value="_supplier" Label="供应商代码" Immediate="true" />
+            <MudDatePicker @bind-Date="_start" Label="开始日期" />
+            <MudDatePicker @bind-Date="_end" Label="结束日期" />
+            <MudButton Variant="Variant.Outlined" OnClick="Reload" StartIcon="@Icons.Material.Filled.Search">查询</MudButton>
+            <MudSpacer />
+            <MudLink Href="@ExportHref" StartIcon="@Icons.Material.Filled.Download">导出</MudLink>
+        </Toolbar>
+    </AutoDataGrid>
+</MudPaper>
+
+@attribute [Authorize(Roles="Manager,Admin")]
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Data.InventoryDb Db { get; set; } = default!;
+    AutoDataGrid<PurchaseSummaryVm>? _grid;
+    string? _supplier; DateTime? _start; DateTime? _end;
+    class PurchaseSummaryVm { public string SupplierCode { get; set; } = string.Empty; public decimal Quantity { get; set; } public decimal Amount { get; set; } }
+    Task<GridData<PurchaseSummaryVm>> LoadData(GridState<PurchaseSummaryVm> state)
+    {
+        var orders = Db.PurchaseOrders;
+        if (!string.IsNullOrWhiteSpace(_supplier)) orders = orders.Where(x => x.SupplierCode == _supplier);
+        if (_start is DateTime s) orders = orders.Where(x => x.CreatedAt >= s);
+        if (_end is DateTime e) orders = orders.Where(x => x.CreatedAt <= e);
+        var ids = orders.Select(x => x.Id).ToList();
+        var lines = Db.PurchaseOrderLines.Where(x => ids.Contains(x.PurchaseOrderId)).ToList();
+        var grouped = lines.GroupBy(x => Db.PurchaseOrders.First(o => o.Id == x.PurchaseOrderId).SupplierCode)
+            .Select(g => new PurchaseSummaryVm { SupplierCode = g.Key, Quantity = g.Sum(x => x.Quantity), Amount = g.Sum(x => x.Quantity * x.UnitPrice) }).ToList();
+        return Task.FromResult(new GridData<PurchaseSummaryVm> { Items = grouped, TotalItems = grouped.Count });
+    }
+    void Reload() => _grid?.Reload();
+    string ExportHref => $"/reports/purchase-summary.xlsx?supplier={Uri.EscapeDataString(_supplier ?? string.Empty)}&start={_start:yyyy-MM-dd}&end={_end:yyyy-MM-dd}";
+}

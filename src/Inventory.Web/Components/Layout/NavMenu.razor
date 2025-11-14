@@ -1,0 +1,69 @@
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">首页</MudNavLink>
+
+    <FeatureGuard Feature="MasterData">
+        <MudNavGroup Title="基础资料" Icon="@Icons.Material.Filled.Storage">
+            <MudNavLink Href="master-data/products" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory2">产品资料</MudNavLink>
+            <MudNavLink Href="master-data/suppliers" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.LocalShipping">供应商</MudNavLink>
+            <MudNavLink Href="master-data/customers" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Group">客户</MudNavLink>
+            <MudNavLink Href="master-data/warehouses" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Warehouse">仓库</MudNavLink>
+            <MudNavLink Href="master-data/units" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Straighten">计量单位</MudNavLink>
+            <MudNavLink Href="master-data/categories" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Category">品类</MudNavLink>
+        </MudNavGroup>
+    </FeatureGuard>
+
+    <FeatureGuard Feature="Purchase">
+        <MudNavGroup Title="采购" Icon="@Icons.Material.Filled.ShoppingCart">
+            <MudNavLink Href="purchase/orders" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assignment">采购订单</MudNavLink>
+            <MudNavLink Href="purchase/receipts" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory">采购收货</MudNavLink>
+            <MudNavLink Href="purchase/returns" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Undo">采购退货</MudNavLink>
+        </MudNavGroup>
+    </FeatureGuard>
+
+    <FeatureGuard Feature="Sales">
+        <MudNavGroup Title="销售" Icon="@Icons.Material.Filled.Receipt">
+            <MudNavLink Href="sales/orders" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ReceiptLong">销售订单</MudNavLink>
+            <MudNavLink Href="sales/shipments" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.LocalShipping">销售发货</MudNavLink>
+            <MudNavLink Href="sales/returns" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Undo">销售退货</MudNavLink>
+        </MudNavGroup>
+    </FeatureGuard>
+
+    <FeatureGuard Feature="Inventory">
+        <MudNavGroup Title="库存" Icon="@Icons.Material.Filled.Inventory">
+            <MudNavLink Href="inventory/transfer" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SyncAlt">跨仓移库</MudNavLink>
+            <MudNavLink Href="inventory/stocktake" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FactCheck">库存盘点</MudNavLink>
+            <MudNavLink Href="inventory/balance" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ViewList">库存余额</MudNavLink>
+            <MudNavLink Href="inventory/movements" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dns">库存流水</MudNavLink>
+        </MudNavGroup>
+    </FeatureGuard>
+
+    <MudNavGroup Title="报表" Icon="@Icons.Material.Filled.Analytics">
+        <MudNavLink Href="reports/purchase-summary" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TrendingUp">采购汇总</MudNavLink>
+        <MudNavLink Href="reports/sales-summary" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TrendingUp">销售汇总</MudNavLink>
+        <MudNavLink Href="reports/sales-margin" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SsidChart">销售毛利</MudNavLink>
+        <MudNavLink Href="reports/audit" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FactCheck">审计日志</MudNavLink>
+    </MudNavGroup>
+
+    <AuthorizeView>
+        <NotAuthorized>
+            <MudNavLink Href="login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login">登录</MudNavLink>
+        </NotAuthorized>
+        <Authorized>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="Logout"
+                StartIcon="@Icons.Material.Filled.Logout">退出</MudButton>
+        </Authorized>
+    </AuthorizeView>
+
+</MudNavMenu>
+
+@code {
+    async Task Logout()
+    {
+        var ok = await JS.InvokeAsync<bool>("authLogout");
+        if (!ok) return;
+        Nav.NavigateTo("/", true);
+    }
+}

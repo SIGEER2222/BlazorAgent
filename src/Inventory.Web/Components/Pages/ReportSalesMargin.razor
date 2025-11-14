@@ -1,0 +1,54 @@
+@page "/reports/sales-margin"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>销售毛利</PageTitle>
+
+<MudPaper>
+    <AutoDataGrid TItem="SalesMarginVm" Title="销售毛利" ServerData="LoadData" Height="70vh">
+        <Toolbar>
+            <MudTextField @bind-Value="_customer" Label="客户代码" Immediate="true" />
+            <MudDatePicker @bind-Date="_start" Label="开始日期" />
+            <MudDatePicker @bind-Date="_end" Label="结束日期" />
+            <MudButton Variant="Variant.Outlined" OnClick="Reload" StartIcon="@Icons.Material.Filled.Search">查询</MudButton>
+            <MudSpacer />
+            <MudLink Href="@ExportHref" StartIcon="@Icons.Material.Filled.Download">导出</MudLink>
+        </Toolbar>
+    </AutoDataGrid>
+</MudPaper>
+
+@attribute [Authorize(Roles="Manager,Admin")]
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Data.InventoryDb Db { get; set; } = default!;
+    AutoDataGrid<SalesMarginVm>? _grid;
+    string? _customer; DateTime? _start; DateTime? _end;
+    class SalesMarginVm { public string OrderCode { get; set; } = string.Empty; public string CustomerCode { get; set; } = string.Empty; public string ProductCode { get; set; } = string.Empty; public decimal Quantity { get; set; } public decimal Revenue { get; set; } public decimal Cost { get; set; } public decimal Margin { get; set; } }
+    Task<GridData<SalesMarginVm>> LoadData(GridState<SalesMarginVm> state)
+    {
+        var orders = Db.SalesOrders;
+        if (!string.IsNullOrWhiteSpace(_customer)) orders = orders.Where(x => x.CustomerCode == _customer);
+        if (_start is DateTime s) orders = orders.Where(x => x.CreatedAt >= s);
+        if (_end is DateTime e) orders = orders.Where(x => x.CreatedAt <= e);
+        var os = orders.ToList();
+        var lines = Db.SalesOrderLines.Where(x => os.Select(o => o.Id).Contains(x.SalesOrderId)).ToList();
+        var result = new List<SalesMarginVm>();
+        foreach (var o in os)
+        {
+            var refCode = $"SO#{o.Code}";
+            var movs = Db.Movements.Where(m => m.Reference == refCode && m.Type == MovementType.Outbound).ToList();
+            var olines = lines.Where(l => l.SalesOrderId == o.Id).ToList();
+            foreach (var l in olines)
+            {
+                var pcode = Db.Db.Queryable<Product>().First(p => p.Id == l.ProductId)?.Code ?? l.ProductId.ToString();
+                var mqty = movs.Where(m => m.ProductId == l.ProductId).Sum(m => m.Quantity);
+                var mcost = movs.Where(m => m.ProductId == l.ProductId).Sum(m => m.Quantity * m.UnitCost);
+                var rev = l.Quantity * l.UnitPrice;
+                result.Add(new SalesMarginVm { OrderCode = o.Code, CustomerCode = o.CustomerCode, ProductCode = pcode, Quantity = mqty == 0 ? l.Quantity : mqty, Revenue = rev, Cost = mcost, Margin = rev - mcost });
+            }
+        }
+        return Task.FromResult(new GridData<SalesMarginVm> { Items = result, TotalItems = result.Count });
+    }
+    void Reload() => _grid?.Reload();
+    string ExportHref => $"/reports/sales-margin.xlsx?customer={Uri.EscapeDataString(_customer ?? string.Empty)}&start={_start:yyyy-MM-dd}&end={_end:yyyy-MM-dd}";
+}

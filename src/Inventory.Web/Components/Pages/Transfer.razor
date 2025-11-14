@@ -1,0 +1,57 @@
+@page "/inventory/transfer"
+
+<PageTitle>跨仓移库</PageTitle>
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.h5">跨仓移库</MudText>
+    <MudPaper Class="pa-4">
+        <MudStack Spacing="2">
+            <MudAutocomplete T="int" @bind-Value="_fromWh" Label="源仓库" SearchFunc="SearchWarehouses" ToStringFunc="ToWhString" Dense="true" />
+            <MudAutocomplete T="int" @bind-Value="_toWh" Label="目标仓库" SearchFunc="SearchWarehouses" ToStringFunc="ToWhString" Dense="true" />
+            <MudAutocomplete T="string" @bind-Value="_productCode" Label="产品代码" SearchFunc="SearchProductCodes" Dense="true" />
+            <MudNumericField @bind-Value="_qty" Label="数量" Required="true" />
+            <MudNumericField @bind-Value="_price" Label="参考单价" Required="true" />
+            <MudStack Row="true" Spacing="1">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="DoTransfer" StartIcon="@Icons.Material.Filled.SyncAlt">执行调拨</MudButton>
+            </MudStack>
+            @if (_msg != null)
+            {
+                <MudAlert Severity="@( _ok ? Severity.Success : Severity.Error)">@_msg</MudAlert>
+            }
+        </MudStack>
+    </MudPaper>
+</MudStack>
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.TransferService TransferSvc { get; set; } = default!;
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.ProductService ProductSvc { get; set; } = default!;
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Data.InventoryDb Db { get; set; } = default!;
+
+    int _fromWh, _toWh; string _productCode = string.Empty; decimal _qty, _price; string? _msg; bool _ok;
+
+    Dictionary<int,string> _whDisplay = new();
+    Task<IEnumerable<string>> SearchProductCodes(string value, CancellationToken _)
+    {
+        var list = Db.Products.Where(x => string.IsNullOrEmpty(value) || x.Code.Contains(value) || x.Name.Contains(value)).OrderBy(x=>x.Code).Select(x => x.Code).Take(10).ToList();
+        return Task.FromResult(list.AsEnumerable());
+    }
+    Task<IEnumerable<int>> SearchWarehouses(string value, CancellationToken _)
+    {
+        var items = Db.Warehouses.Where(x => string.IsNullOrEmpty(value) || x.Code.Contains(value) || x.Name.Contains(value)).OrderBy(x=>x.Code).Select(x => new { x.Id, x.Code, x.Name }).Take(10).ToList();
+        _whDisplay = items.ToDictionary(d => d.Id, d => $"{d.Code} - {d.Name}");
+        return Task.FromResult(items.Select(d => d.Id).AsEnumerable());
+    }
+    string ToWhString(int id) => _whDisplay.TryGetValue(id, out var s) ? s : id.ToString();
+
+    async Task DoTransfer()
+    {
+        var p = await ProductSvc.FindByCodeAsync(_productCode);
+        if (p == null) { _msg = "产品不存在"; _ok = false; return; }
+        var ok = await TransferSvc.TransferAsync(_fromWh, _toWh, p.Id, _qty, _price, $"TR({_fromWh}->{_toWh}) #{_productCode}");
+        _ok = ok; _msg = ok ? "调拨成功" : "源仓库库存不足，调拨失败";
+    }
+}
+@attribute [Authorize(Roles="Manager,Admin")]

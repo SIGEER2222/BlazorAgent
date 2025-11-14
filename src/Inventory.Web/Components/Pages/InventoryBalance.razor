@@ -1,0 +1,67 @@
+@page "/inventory/balance"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>库存余额</PageTitle>
+
+<MudPaper>
+    <AutoDataGrid @ref="_grid" TItem="BalanceVm" Title="库存余额" ServerData="LoadData" Height="70vh">
+        <Toolbar>
+            <MudNumericField @bind-Value="_warehouseId" Label="仓库Id" Immediate="true" />
+            <MudTextField @bind-Value="_productCode" Label="产品代码" Immediate="true" />
+            <MudButton Variant="Variant.Outlined" OnClick="Reload" StartIcon="@Icons.Material.Filled.Search">查询</MudButton>
+            <MudSpacer />
+            <MudLink Href="@ExportHref" StartIcon="@Icons.Material.Filled.Download">导出 Excel</MudLink>
+        </Toolbar>
+    </AutoDataGrid>
+</MudPaper>
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Data.InventoryDb Db { get; set; } = default!;
+    [Microsoft.AspNetCore.Components.Inject]
+    NavigationManager Nav { get; set; } = default!;
+
+    AutoDataGrid<BalanceVm>? _grid;
+    int? _warehouseId; string? _productCode;
+
+    class BalanceVm {
+        public int Id { get; set; }
+        public int WarehouseId { get; set; }
+        public string WarehouseName { get; set; } = string.Empty;
+        public int ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public decimal Quantity { get; set; }
+        public decimal AvgCost { get; set; }
+    }
+
+    Task<GridData<BalanceVm>> LoadData(GridState<BalanceVm> state)
+    {
+        var page = state.Page + 1; var pageSize = state.PageSize;
+        var q = Db.Balances;
+        if (_warehouseId is int w) q = q.Where(x => x.WarehouseId == w);
+        if (!string.IsNullOrWhiteSpace(_productCode))
+        {
+            var p = Db.Db.Queryable<global::Inventory.Domain.Entities.Product>().First(x => x.Code == _productCode);
+            if (p != null) q = q.Where(x => x.ProductId == p.Id);
+            else q = q.Where(x => false);
+        }
+        int total = 0;
+        var items = q.OrderBy(x => x.Id).ToPageList(page, pageSize, ref total);
+        var prods = Db.Db.Queryable<global::Inventory.Domain.Entities.Product>().Where(x=> items.Select(i=>i.ProductId).Contains(x.Id)).ToList();
+        var whs = Db.Db.Queryable<global::Inventory.Domain.Entities.Warehouse>().Where(x=> items.Select(i=>i.WarehouseId).Contains(x.Id)).ToList();
+        var vms = items.Select(i => new BalanceVm {
+            Id = i.Id,
+            WarehouseId = i.WarehouseId,
+            WarehouseName = whs.FirstOrDefault(x=>x.Id==i.WarehouseId)?.Name ?? i.WarehouseId.ToString(),
+            ProductId = i.ProductId,
+            ProductName = prods.FirstOrDefault(x=>x.Id==i.ProductId)?.Name ?? i.ProductId.ToString(),
+            Quantity = i.Quantity,
+            AvgCost = i.AvgCost
+        }).ToList();
+        return Task.FromResult(new GridData<BalanceVm> { Items = vms, TotalItems = total });
+    }
+
+    void Reload() => _grid?.Reload();
+    string ExportHref => $"/reports/inventory/balance.xlsx?warehouseId={_warehouseId}&productCode={Uri.EscapeDataString(_productCode ?? string.Empty)}";
+}
+@attribute [Authorize(Roles="Manager,Admin")]

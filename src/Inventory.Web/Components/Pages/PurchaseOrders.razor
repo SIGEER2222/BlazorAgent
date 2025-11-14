@@ -1,0 +1,114 @@
+@page "/purchase/orders"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>采购订单</PageTitle>
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.h5">采购订单</MudText>
+    <MudPaper>
+        <AutoDataGrid @ref="_grid" TItem="PurchaseOrder" Title="订单列表" ServerData="LoadData" Height="70vh">
+            <Toolbar>
+                <MudTextField @bind-Value="_keyword" Placeholder="搜索订单号/供应商代码" Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewOrder" StartIcon="@Icons.Material.Filled.Add">新建订单</MudButton>
+            </Toolbar>
+            <RowActions Context="po">
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" Title="加行" OnClick="@(()=>AddLine(po))" />
+                <MudIconButton Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small" Title="审批" OnClick="@(()=>Approve(po))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Inventory" Color="Color.Primary" Size="Size.Small" Title="收货入库" OnClick="@(()=>Receive(po))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Title="删除" OnClick="@(()=>Delete(po))" />
+            </RowActions>
+        </AutoDataGrid>
+    </MudPaper>
+</MudStack>
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.PurchaseService PurchaseSvc { get; set; } = default!;
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.ProductService ProductSvc { get; set; } = default!;
+
+    AutoDataGrid<PurchaseOrder>? _grid;
+    string? _keyword;
+
+    async Task<GridData<PurchaseOrder>> LoadData(GridState<PurchaseOrder> state)
+    {
+        var page = state.Page + 1; var pageSize = state.PageSize;
+        var (items, total) = await PurchaseSvc.QueryAsync(page, pageSize, _keyword);
+        return new GridData<PurchaseOrder> { Items = items.ToList(), TotalItems = total };
+    }
+
+    PurchaseOrder _editing = new();
+    bool _dlgOrder;
+    void NewOrder() { _editing = new PurchaseOrder { Status = PurchaseOrderStatus.Draft }; _dlgOrder = true; }
+    async Task SaveOrder() { if (_editing.Id == 0) await PurchaseSvc.CreateAsync(_editing); _dlgOrder = false; _grid?.Reload(); }
+
+    bool _dlgLine;
+    PurchaseOrder? _current;
+    LineVm _line = new();
+    class LineVm { public string ProductCode { get; set; } = string.Empty; public int WarehouseId { get; set; } = 0; public decimal Quantity { get; set; } = 0; public decimal UnitPrice { get; set; } = 0; }
+    void AddLine(PurchaseOrder po) { _current = po; _line = new LineVm(); _dlgLine = true; }
+    async Task SaveLine()
+    {
+        var p = await ProductSvc.FindByCodeAsync(_line.ProductCode);
+        if (p == null || _current == null) { _dlgLine = false; return; }
+        await PurchaseSvc.AddLineAsync(new PurchaseOrderLine { PurchaseOrderId = _current.Id, ProductId = p.Id, WarehouseId = _line.WarehouseId, Quantity = _line.Quantity, UnitPrice = _line.UnitPrice });
+        _dlgLine = false;
+    }
+
+    async Task Approve(PurchaseOrder po) { await PurchaseSvc.ApproveAsync(po.Id); _grid?.Reload(); }
+    async Task Receive(PurchaseOrder po) { await PurchaseSvc.ReceiveAsync(po.Id); _grid?.Reload(); }
+    async Task Delete(PurchaseOrder po) { var ok = await PurchaseSvc.DeleteAsync(po.Id); _grid?.Reload(); }
+}
+
+<MudDialog IsVisible="_dlgOrder" DisableBackdropClick="true">
+    <DialogContent>
+        <div data-testid="po-dialog">
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_editing.Code" Label="订单号" Placeholder="订单号" Required="true" InputAttributes="new() { { \"data-testid\", \"po-code\" } }" />
+            <MudTextField @bind-Value="_editing.SupplierCode" Label="供应商代码" Placeholder="供应商代码" Required="true" InputAttributes="new() { { \"data-testid\", \"po-supplier\" } }" />
+            <MudTextField @bind-Value="_editing.Remark" Label="备注" />
+        </MudStack>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(()=>_dlgOrder=false)">取消</MudButton>
+        <div data-testid="po-save-btn"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveOrder">保存</MudButton></div>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog IsVisible="_dlgLine" DisableBackdropClick="true">
+    <DialogContent>
+        <div data-testid="po-line-dialog">
+        <MudStack Spacing="2">
+            <MudAutocomplete T="string" @bind-Value="_line.ProductCode" Label="产品代码" Placeholder="产品代码" SearchFunc="SearchProductCodes" Dense="true" InputAttributes="new() { { \"data-testid\", \"po-line-product\" } }" />
+            <MudAutocomplete T="int" @bind-Value="_line.WarehouseId" Label="仓库" Placeholder="仓库" SearchFunc="SearchWarehouses" ToStringFunc="ToWhString" Dense="true" InputAttributes="new() { { \"data-testid\", \"po-line-warehouse\" } }" />
+            <MudNumericField @bind-Value="_line.Quantity" Label="数量" Placeholder="数量" Required="true" InputAttributes="new() { { \"data-testid\", \"po-line-qty\" } }" />
+            <MudNumericField @bind-Value="_line.UnitPrice" Label="单价" Placeholder="单价" Required="true" InputAttributes="new() { { \"data-testid\", \"po-line-price\" } }" />
+        </MudStack>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(()=>_dlgLine=false)">取消</MudButton>
+        <div data-testid="po-line-save-btn"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveLine">保存</MudButton></div>
+    </DialogActions>
+</MudDialog>
+@attribute [Authorize(Roles="Manager,Admin")]
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Data.InventoryDb Db { get; set; } = default!;
+    Dictionary<int,string> _whDisplay = new();
+    Task<IEnumerable<string>> SearchProductCodes(string value, CancellationToken _)
+    {
+        var list = Db.Products.Where(x => string.IsNullOrEmpty(value) || x.Code.Contains(value) || x.Name.Contains(value)).OrderBy(x=>x.Code).Select(x => x.Code).Take(10).ToList();
+        return Task.FromResult(list.AsEnumerable());
+    }
+    Task<IEnumerable<int>> SearchWarehouses(string value, CancellationToken _)
+    {
+        var items = Db.Warehouses.Where(x => string.IsNullOrEmpty(value) || x.Code.Contains(value) || x.Name.Contains(value)).OrderBy(x=>x.Code).Select(x => new { x.Id, x.Code, x.Name }).Take(10).ToList();
+        _whDisplay = items.ToDictionary(d => d.Id, d => $"{d.Code} - {d.Name}");
+        return Task.FromResult(items.Select(d => d.Id).AsEnumerable());
+    }
+    string ToWhString(int id) => _whDisplay.TryGetValue(id, out var s) ? s : id.ToString();
+}

@@ -1,0 +1,68 @@
+@page "/sales/shipments"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>销售发货</PageTitle>
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.h5">销售发货</MudText>
+    <MudPaper>
+        <AutoDataGrid @ref="_orders" TItem="SalesOrder" Title="待发货订单" ServerData="LoadOrders" Height="40vh" RowClick="OnOrderSelected">
+        </AutoDataGrid>
+    </MudPaper>
+    <MudPaper Class="mt-4">
+        <AutoDataGrid @ref="_lines" TItem="SalesOrderLine" Title="订单明细" ServerData="LoadLines" Height="40vh">
+            <Toolbar>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Ship" StartIcon="@Icons.Material.Filled.LocalShipping">发货出库</MudButton>
+            </Toolbar>
+        </AutoDataGrid>
+    </MudPaper>
+</MudStack>
+
+@attribute [Authorize(Roles="Manager,Admin")]
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.SalesService Svc { get; set; } = default!;
+
+    AutoDataGrid<SalesOrder>? _orders;
+    AutoDataGrid<SalesOrderLine>? _lines;
+    int? _currentId;
+
+    Task<GridData<SalesOrder>> LoadOrders(GridState<SalesOrder> state)
+    {
+        var page = state.Page + 1; var size = state.PageSize;
+        var q = Svc.QueryAsync(page, size, null);
+        return q.ContinueWith(t =>
+        {
+            var items = t.Result.items.Where(x => x.Status == SalesOrderStatus.Approved).ToList();
+            return new GridData<SalesOrder> { Items = items, TotalItems = items.Count };
+        });
+    }
+
+    Task<GridData<SalesOrderLine>> LoadLines(GridState<SalesOrderLine> state)
+    {
+        var page = state.Page + 1; var size = state.PageSize;
+        if (_currentId is not int id)
+            return Task.FromResult(new GridData<SalesOrderLine> { Items = new List<SalesOrderLine>(), TotalItems = 0 });
+        return Svc.GetLinesAsync(id).ContinueWith(t =>
+        {
+            var items = t.Result;
+            return new GridData<SalesOrderLine> { Items = items, TotalItems = items.Count };
+        });
+    }
+
+    async Task Ship()
+    {
+        if (_currentId is int id)
+        {
+            var ok = await Svc.ShipAsync(id);
+            _orders?.Reload();
+            _lines?.Reload();
+        }
+    }
+    void OnOrderSelected(DataGridRowClickEventArgs<SalesOrder> e)
+    {
+        _currentId = e.Item.Id;
+        _lines?.Reload();
+    }
+}

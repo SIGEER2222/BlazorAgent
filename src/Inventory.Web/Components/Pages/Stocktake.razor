@@ -1,0 +1,100 @@
+@page "/inventory/stocktake"
+@using global::Inventory.Domain.Entities
+
+<PageTitle>库存盘点</PageTitle>
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.h5">库存盘点</MudText>
+    <MudPaper>
+        <AutoDataGrid @ref="_grid" TItem="StockCount" Title="盘点任务" ServerData="LoadData" Height="60vh">
+            <Toolbar>
+                <MudTextField @bind-Value="_keyword" Placeholder="搜索任务号" Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewTask" StartIcon="@Icons.Material.Filled.Add">新建任务</MudButton>
+            </Toolbar>
+            <RowActions Context="sc">
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" Title="加行" OnClick="@(()=>AddLine(sc))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Done" Color="Color.Success" Size="Size.Small" Title="应用盘点" OnClick="@(()=>Apply(sc))" />
+            </RowActions>
+        </AutoDataGrid>
+    </MudPaper>
+</MudStack>
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.StocktakingService Svc { get; set; } = default!;
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Services.ProductService ProductSvc { get; set; } = default!;
+
+    AutoDataGrid<StockCount>? _grid;
+    string? _keyword;
+
+    async Task<GridData<StockCount>> LoadData(GridState<StockCount> state)
+    {
+        var page = state.Page + 1; var pageSize = state.PageSize;
+        var (items, total) = await Svc.QueryAsync(page, pageSize, _keyword);
+        return new GridData<StockCount> { Items = items.ToList(), TotalItems = total };
+    }
+
+    StockCount _editing = new(); bool _dlgTask;
+    void NewTask() { _editing = new StockCount { Status = StockCountStatus.Draft }; _dlgTask = true; }
+    async Task SaveTask() { if (_editing.Id == 0) await Svc.CreateAsync(_editing); _dlgTask = false; _grid?.Reload(); }
+
+    bool _dlgLine; StockCount? _current; LineVm _line = new();
+    class LineVm { public string ProductCode { get; set; } = string.Empty; public int WarehouseId { get; set; } = 0; public decimal CountedQty { get; set; } = 0; }
+    void AddLine(StockCount sc) { _current = sc; _line = new LineVm(); _dlgLine = true; }
+    async Task SaveLine()
+    {
+        var p = await ProductSvc.FindByCodeAsync(_line.ProductCode);
+        if (p == null || _current == null) { _dlgLine = false; return; }
+        await Svc.AddLineAsync(new StockCountLine { StockCountId = _current.Id, ProductId = p.Id, WarehouseId = _line.WarehouseId, CountedQty = _line.CountedQty });
+        _dlgLine = false;
+    }
+
+    async Task Apply(StockCount sc) { await Svc.ApplyAsync(sc.Id); _grid?.Reload(); }
+}
+
+<MudDialog IsVisible="_dlgTask" DisableBackdropClick="true">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_editing.Code" Label="任务号" Required="true" InputAttributes="new() { { \"data-testid\", \"st-code\" } }" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(()=>_dlgTask=false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveTask">保存</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog IsVisible="_dlgLine" DisableBackdropClick="true">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudAutocomplete T="string" @bind-Value="_line.ProductCode" Label="产品代码" SearchFunc="SearchProductCodes" Dense="true" InputAttributes="new() { { \"data-testid\", \"st-line-product\" } }" />
+            <MudAutocomplete T="int" @bind-Value="_line.WarehouseId" Label="仓库" SearchFunc="SearchWarehouses" ToStringFunc="ToWhString" Dense="true" InputAttributes="new() { { \"data-testid\", \"st-line-warehouse\" } }" />
+            <MudNumericField @bind-Value="_line.CountedQty" Label="盘点数量" Required="true" InputAttributes="new() { { \"data-testid\", \"st-line-qty\" } }" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(()=>_dlgLine=false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveLine">保存</MudButton>
+    </DialogActions>
+ </MudDialog>
+@attribute [Authorize(Roles="Manager,Admin")]
+
+@code {
+    [Microsoft.AspNetCore.Components.Inject]
+    global::Inventory.Infrastructure.Data.InventoryDb Db { get; set; } = default!;
+    Dictionary<int,string> _whDisplay = new();
+    Task<IEnumerable<string>> SearchProductCodes(string value, CancellationToken _)
+    {
+        var list = Db.Products.Where(x => string.IsNullOrEmpty(value) || x.Code.Contains(value) || x.Name.Contains(value)).OrderBy(x=>x.Code).Select(x => x.Code).Take(10).ToList();
+        return Task.FromResult(list.AsEnumerable());
+    }
+    Task<IEnumerable<int>> SearchWarehouses(string value, CancellationToken _)
+    {
+        var items = Db.Warehouses.Where(x => string.IsNullOrEmpty(value) || x.Code.Contains(value) || x.Name.Contains(value)).OrderBy(x=>x.Code).Select(x => new { x.Id, x.Code, x.Name }).Take(10).ToList();
+        _whDisplay = items.ToDictionary(d => d.Id, d => $"{d.Code} - {d.Name}");
+        return Task.FromResult(items.Select(d => d.Id).AsEnumerable());
+    }
+    string ToWhString(int id) => _whDisplay.TryGetValue(id, out var s) ? s : id.ToString();
+}
