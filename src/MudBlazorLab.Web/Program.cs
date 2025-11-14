@@ -41,7 +41,11 @@ if (!app.Environment.IsDevelopment()) {
   app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+var httpsPort = app.Configuration["ASPNETCORE_HTTPS_PORT"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_HTTPS_PORT");
+if (!string.IsNullOrEmpty(httpsPort))
+{
+    app.UseHttpsRedirection();
+}
 
 
 app.UseAuthentication();

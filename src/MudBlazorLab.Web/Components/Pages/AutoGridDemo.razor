@@ -1,0 +1,61 @@
+@page "/autogrid-demo"
+@using MudBlazorLab.Components.Components
+@using MudBlazorLab.Components.Models
+@using MudBlazor
+
+<PageTitle>AutoGrid 演示</PageTitle>
+
+<MudStack Spacing="2">
+    <MudAlert Severity="Severity.Info">演示基于 DTO 自动生成列与表单，支持自定义服务器数据加载。</MudAlert>
+
+    <AutoDataGrid TItem="InventoryItem"
+                  Title="库存项目"
+                  Source="@_initial"
+                  ServerData="@LoadLowerGridData"
+                  Height="70vh"
+                  FixedHeader="true"
+                  Dense="true"
+                  Bordered="true"
+                  Hover="true"
+                  Filterable="true" />
+</MudStack>
+
+@code {
+    List<InventoryItem> _data = new();
+    IEnumerable<InventoryItem> _initial => _data;
+
+    protected override void OnInitialized()
+    {
+        _data = new List<InventoryItem>
+        {
+            new() { Name = "A100", Quantity = 12, Price = 19.99m, WeightKg = 0.45, Active = true, ManufactureDate = DateTime.Today.AddDays(-7), ExpiryDate = DateTime.Today.AddMonths(6), Category = InventoryCategory.Perishable },
+            new() { Name = "B200", Quantity = 5, Price = 99.00m, WeightKg = 2.3, Active = false, ManufactureDate = DateTime.Today.AddDays(-30), Category = InventoryCategory.Valuable },
+            new() { Name = "C300", Quantity = 100, Price = 1.99m, WeightKg = 0.05, Active = true, ManufactureDate = DateTime.Today.AddDays(-1), Category = InventoryCategory.General },
+            new() { Name = "D400", Quantity = 0, Price = 299.50m, WeightKg = 5.8, Active = false, ManufactureDate = DateTime.Today.AddDays(-120), ExpiryDate = DateTime.Today.AddMonths(1), Category = InventoryCategory.Hazardous },
+        };
+    }
+
+    InventoryItem CreateItem() => new InventoryItem
+    {
+        Name = $"N{_data.Count + 1}",
+        Quantity = 1,
+        Price = 0m,
+        WeightKg = 0,
+        Active = true,
+        ManufactureDate = DateTime.Today,
+        ExpiryDate = null,
+    };
+
+    Task OnCreateItem(InventoryItem item)
+    {
+        _data.Add(item);
+        return Task.CompletedTask;
+    }
+    Task<GridData<InventoryItem>> LoadLowerGridData(GridState<InventoryItem> state)
+    {
+        var query = _data.AsQueryable();
+        var total = query.Count();
+        var pageItems = query.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+        return Task.FromResult(new GridData<InventoryItem> { Items = pageItems, TotalItems = total });
+    }
+}

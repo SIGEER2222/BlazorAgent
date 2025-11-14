@@ -1,0 +1,144 @@
+@typeparam TItem
+
+@if (ServerData is null)
+{
+    <MudDataGrid T="TItem"
+                 Items="@ViewSource"
+                 Bordered="@Bordered"
+                 Dense="@Dense"
+                 Hover="@Hover"
+                 Filterable="@Filterable"
+                 FixedHeader="@FixedHeader"
+                 Height="@Height"
+                 ColumnResizeMode="@ColumnResizeMode">
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">@Title</MudText>
+        </ToolBarContent>
+        <Columns>
+            @foreach (var p in DisplayProps)
+            {
+                if (IsEnum(p))
+                {
+                    <TemplateColumn T="TItem" Title="@p.Name">
+                        <CellTemplate Context="ctx">
+                            @EnumText(ctx.Item, p)
+                        </CellTemplate>
+                        <FilterTemplate>
+                            <MudSelect T="string" MultiSelection="true" Dense="true"
+                                       SelectedValues="@GetEnumSelectedKeys(p)"
+                                       SelectedValuesChanged="@((IEnumerable<string> vals) => OnEnumSelected(p, vals))">
+                                @foreach (var opt in GetEnumOptions(p))
+                                {
+                                    <MudSelectItem Value="@opt.Key">@opt.Text</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </FilterTemplate>
+                    </TemplateColumn>
+                    continue;
+                }
+                if (p.PropertyType == typeof(string))
+                {
+                    <PropertyColumn T="TItem" TProperty="string" Property="@(GetLambda<string>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(int))
+                {
+                    <PropertyColumn T="TItem" TProperty="int" Property="@(GetLambda<int>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(double))
+                {
+                    <PropertyColumn T="TItem" TProperty="double" Property="@(GetLambda<double>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(decimal))
+                {
+                    <PropertyColumn T="TItem" TProperty="decimal" Property="@(GetLambda<decimal>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(bool))
+                {
+                    <PropertyColumn T="TItem" TProperty="bool" Property="@(GetLambda<bool>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(DateTime))
+                {
+                    <PropertyColumn T="TItem" TProperty="DateTime" Property="@(GetLambda<DateTime>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(DateTime?))
+                {
+                    <PropertyColumn T="TItem" TProperty="DateTime?" Property="@(GetLambda<DateTime?>(p))" Title="@p.Name" />
+                }
+            }
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="TItem" />
+        </PagerContent>
+    </MudDataGrid>
+}
+else
+{
+    <MudDataGrid T="TItem"
+                 ServerData="@ServerData"
+                 Bordered="@Bordered"
+                 Dense="@Dense"
+                 Hover="@Hover"
+                 Filterable="@Filterable"
+                 FixedHeader="@FixedHeader"
+                 Height="@Height"
+                 ColumnResizeMode="@ColumnResizeMode">
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">@Title</MudText>
+        </ToolBarContent>
+        <Columns>
+            @foreach (var p in DisplayProps)
+            {
+                if (IsEnum(p))
+                {
+                    <TemplateColumn T="TItem" Title="@p.Name">
+                        <CellTemplate Context="ctx">
+                            @EnumText(ctx.Item, p)
+                        </CellTemplate>
+                        <FilterTemplate>
+                            <MudSelect T="string" MultiSelection="true" Dense="true"
+                                       SelectedValues="@GetEnumSelectedKeys(p)"
+                                       SelectedValuesChanged="@((IEnumerable<string> vals) => OnEnumSelected(p, vals))">
+                                @foreach (var opt in GetEnumOptions(p))
+                                {
+                                    <MudSelectItem Value="@opt.Key">@opt.Text</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </FilterTemplate>
+                    </TemplateColumn>
+                    continue;
+                }
+                if (p.PropertyType == typeof(string))
+                {
+                    <PropertyColumn T="TItem" TProperty="string" Property="@(GetLambda<string>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(int))
+                {
+                    <PropertyColumn T="TItem" TProperty="int" Property="@(GetLambda<int>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(double))
+                {
+                    <PropertyColumn T="TItem" TProperty="double" Property="@(GetLambda<double>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(decimal))
+                {
+                    <PropertyColumn T="TItem" TProperty="decimal" Property="@(GetLambda<decimal>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(bool))
+                {
+                    <PropertyColumn T="TItem" TProperty="bool" Property="@(GetLambda<bool>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(DateTime))
+                {
+                    <PropertyColumn T="TItem" TProperty="DateTime" Property="@(GetLambda<DateTime>(p))" Title="@p.Name" />
+                }
+                else if (p.PropertyType == typeof(DateTime?))
+                {
+                    <PropertyColumn T="TItem" TProperty="DateTime?" Property="@(GetLambda<DateTime?>(p))" Title="@p.Name" />
+                }
+            }
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="TItem" />
+        </PagerContent>
+    </MudDataGrid>
+}
