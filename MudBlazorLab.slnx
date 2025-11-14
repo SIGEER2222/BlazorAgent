@@ -1,0 +1,15 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/MudBlazorLab.Components/MudBlazorLab.Components.csproj" />
+    <Project Path="src/MudBlazorLab.Web/MudBlazorLab.Web.csproj" Id="f22376ad-d0ef-4931-a8b4-53e8b7f377af" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MudBlazorLab.ComponentTests/MudBlazorLab.ComponentTests.csproj" />
+    <Project Path="tests/MudBlazorLab.E2E/MudBlazorLab.E2E.csproj" />
+  </Folder>
+</Solution>
