@@ -1,0 +1,49 @@
+@page "/linked-autogrid-demo"
+@using MudBlazor
+@using Bogus
+@using MudBlazorLab.Components.Components
+@using MudBlazorLab.Components.Models
+
+<MudStack Spacing="2">
+    <AutoDataGrid TItem="InventoryItem" Title="上表：点击行筛选下表" Source="@_data" Height="40vh" RowClick="@OnUpperRowClick" />
+
+    <AutoDataGrid @ref="_lower" TItem="InventoryItem" Title="下表：按上表选择过滤" ServerData="@LoadLowerGridData"
+        Height="40vh" />
+</MudStack>
+
+@code {
+    List<InventoryItem> _data = new();
+    InventoryCategory? _selectedCategory;
+    AutoDataGrid<InventoryItem>? _lower;
+
+    protected override void OnInitialized()
+    {
+        var faker = new Faker<InventoryItem>("zh_CN")
+        .RuleFor(x => x.Name, f => f.Commerce.ProductName())
+        .RuleFor(x => x.Quantity, f => f.Random.Int(0, 5000))
+        .RuleFor(x => x.Price, f => f.Random.Decimal(1, 10000))
+        .RuleFor(x => x.WeightKg, f => f.Random.Double(0.1, 100))
+        .RuleFor(x => x.Active, f => f.Random.Bool())
+        .RuleFor(x => x.ManufactureDate, f => f.Date.Past(3))
+        .RuleFor(x => x.ExpiryDate, f => f.Random.Bool() ? f.Date.Future(2) : null)
+        .RuleFor(x => x.Category, f => f.PickRandom<InventoryCategory>());
+        _data = faker.Generate(20000);
+    }
+
+    Task OnUpperRowClick(DataGridRowClickEventArgs<InventoryItem> args)
+    {
+        _selectedCategory = args.Item.Category;
+        _lower?.Reload();
+        return Task.CompletedTask;
+    }
+
+    Task<GridData<InventoryItem>> LoadLowerGridData(GridState<InventoryItem> state)
+    {
+        var q = _data.AsQueryable();
+        if (_selectedCategory.HasValue)
+            q = q.Where(x => x.Category == _selectedCategory.Value);
+        var total = q.Count();
+        var pageItems = q.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+        return Task.FromResult(new GridData<InventoryItem> { Items = pageItems, TotalItems = total });
+    }
+}

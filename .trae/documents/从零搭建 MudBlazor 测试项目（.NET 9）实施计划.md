@@ -100,6 +100,7 @@ build/
     * `dotnet add src/MudBlazorLab.Web package Serilog.Sinks.File`
 
     * `dotnet add src/MudBlazorLab.Web package Serilog.Settings.Configuration`
+    * `dotnet add src/MudBlazorLab.Web/MudBlazorLab.Web.csproj package Bogus`  — 用于生成大量模拟数据（联动/性能测试）
 
   * 组件库：
 
@@ -145,6 +146,7 @@ build/
 * 构建与运行 Web：
 
   * `dotnet build`
+  * `dotnet build -nologo -clp:errorsonly`  — 构建时仅输出错误，便于快速验证
 
   * `dotnet run --project src/MudBlazorLab.Web`
 
@@ -302,4 +304,3 @@ public class HelloPageE2E
   * <https://www.nuget.org/packages/MudBlazor/8.0.0>
 
   * <https://www.nuget.org/packages/MudBlazor/latest>
-

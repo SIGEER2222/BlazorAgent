@@ -6,28 +6,46 @@
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
     <MudNavLink Href="autogrid-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TableChart">AutoGrid Demo</MudNavLink>
-      <AuthorizeView>
+
+    <MudNavLink Href="linked-autogrid-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TableChart">
+        Link AutoGrid Demo
+    </MudNavLink>
+
+    <MudNavLink Href="three-level-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DeviceHub">
+        Three Level Demo
+    </MudNavLink>
+
+    <FeatureGuard Feature="IncomingInspection">
+        <MudNavLink Href="incoming-inspection" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory">来料检验</MudNavLink>
+    </FeatureGuard>
+    <FeatureGuard Feature="ProcessInspection">
+        <MudNavLink Href="process-shipping-inspection" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assignment">过程检验 & 出货检查</MudNavLink>
+    </FeatureGuard>
+    <FeatureGuard Feature="ShiftInspection">
+        <MudNavLink Href="shift-random-inspection" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FactCheck">开班点检 & 随机点检</MudNavLink>
+    </FeatureGuard>
+
+    <AuthorizeView>
         <Authorized>
-            <MudNavLink Href="profile" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Profile</MudNavLink>
+            <MudNavLink Href="profile" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Profile
+            </MudNavLink>
         </Authorized>
     </AuthorizeView>
-    <PolicyGuard Policy="@AuthPolicies.RequireAdmin">
+
+    <FeatureGuard Feature="Admin">
         <MudNavLink Href="admin" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Lock">Admin</MudNavLink>
-    </PolicyGuard>
-    <PolicyGuard Policy="@AuthPolicies.RequireManagerOrAdmin">
-        <MudNavLink Href="reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assessment">Reports</MudNavLink>
-    </PolicyGuard>
-    <PolicyGuard Policy="@AuthPolicies.RequireEditor">
-        <MudNavLink Href="editor" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Edit">Editor</MudNavLink>
-    </PolicyGuard>
+    </FeatureGuard>
+
     <AuthorizeView>
         <NotAuthorized>
             <MudNavLink Href="login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login">Login</MudNavLink>
         </NotAuthorized>
         <Authorized>
-            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="Logout" StartIcon="@Icons.Material.Filled.Logout">Logout</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="Logout"
+                StartIcon="@Icons.Material.Filled.Logout">Logout</MudButton>
         </Authorized>
     </AuthorizeView>
+
 </MudNavMenu>
 
 @code {

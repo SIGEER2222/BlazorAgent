@@ -1,0 +1,28 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@inject MudBlazorLab.Components.Services.IPermissionService Perms
+
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            @if (Perms.HasAccess(context.User, Feature))
+            {
+                @ChildContent
+            }
+            else
+            {
+                @NotAuthorizedContent
+            }
+        </Authorized>
+        <NotAuthorized>
+            @NotAuthorizedContent
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    [Parameter] public string Feature { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? NotAuthorizedContent { get; set; }
+}
+

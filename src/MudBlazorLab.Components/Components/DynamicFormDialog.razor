@@ -1,0 +1,136 @@
+@typeparam TModel
+@using System.Reflection
+@using MudBlazor
+@inject NavigationManager Nav
+
+<MudForm @ref="_form">
+    <MudStack Spacing="2">
+        @foreach (var p in _props)
+        {
+            if (p.Name == "Id")
+            {
+                continue;
+            }
+            var t = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
+            if (t == typeof(string))
+            {
+                <MudTextField T="string" Label="@p.Name" Value="@((string?)p.GetValue(Model))"
+                    ValueChanged="@OnStringChanged(p)" />
+            }
+            else if (t == typeof(int))
+            {
+                <MudNumericField T="int" Label="@p.Name" Value="@((int)(p.GetValue(Model) ?? 0))"
+                    ValueChanged="@OnIntChanged(p)" />
+            }
+            else if (t == typeof(decimal))
+            {
+                <MudNumericField T="decimal" Label="@p.Name" Value="@((decimal)(p.GetValue(Model) ?? 0m))"
+                    ValueChanged="@OnDecimalChanged(p)" />
+            }
+            else if (t == typeof(double))
+            {
+                <MudNumericField T="double" Label="@p.Name" Value="@((double)(p.GetValue(Model) ?? 0d))"
+                    ValueChanged="@OnDoubleChanged(p)" />
+            }
+            else if (t == typeof(bool))
+            {
+                <MudSwitch T="bool" Label="@p.Name" Checked="@((bool)(p.GetValue(Model) ?? false))"
+                    CheckedChanged="@OnBoolChanged(p)" />
+            }
+            else if (t == typeof(DateTime))
+            {
+                <MudDatePicker Label="@p.Name" @bind-Date="_dates[p.Name]" />
+            }
+            else if (t == typeof(DateTime?))
+            {
+                <MudDatePicker Label="@p.Name" @bind-Date="_dates[p.Name]" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2">不支持的类型：@p.Name (@t.Name)</MudText>
+            }
+        }
+        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+            <MudButton Variant="Variant.Text" OnClick="Cancel">取消</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Ok">确定</MudButton>
+        </MudStack>
+    </MudStack>
+</MudForm>
+
+@code {
+    [Parameter] public string Title { get; set; } = "添加";
+    [Parameter] public TModel Model { get; set; } = default!;
+    [Parameter] public Dictionary<string, object?>? Defaults { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<TModel> OnSubmit { get; set; }
+    [Parameter] public Action? CancelAction { get; set; }
+    [Parameter] public Action<TModel>? SubmitAction { get; set; }
+
+    MudForm? _form;
+    List<PropertyInfo> _props = new();
+    Dictionary<string, DateTime?> _dates = new();
+
+    EventCallback<string?> OnStringChanged(PropertyInfo p) => EventCallback.Factory.Create<string?>(this, (string? v) =>
+    p.SetValue(Model, v));
+    EventCallback<int> OnIntChanged(PropertyInfo p) => EventCallback.Factory.Create<int>(this, (int v) => p.SetValue(Model,
+    v));
+    EventCallback<decimal> OnDecimalChanged(PropertyInfo p) => EventCallback.Factory.Create<decimal>(this, (decimal v) =>
+    p.SetValue(Model, v));
+    EventCallback<double> OnDoubleChanged(PropertyInfo p) => EventCallback.Factory.Create<double>(this, (double v) =>
+    p.SetValue(Model, v));
+    EventCallback<bool> OnBoolChanged(PropertyInfo p) => EventCallback.Factory.Create<bool>(this, (bool v) =>
+    p.SetValue(Model, v));
+
+    protected override void OnInitialized()
+    {
+        if (Model == null)
+            Model = Activator.CreateInstance<TModel>();
+        if (Defaults != null)
+        {
+            foreach (var kv in Defaults)
+            {
+                var prop = typeof(TModel).GetProperty(kv.Key, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+                if (prop != null && prop.CanWrite)
+                {
+                    prop.SetValue(Model, kv.Value);
+                }
+            }
+        }
+        _props = typeof(TModel).GetProperties(BindingFlags.Instance | BindingFlags.Public)
+        .Where(p => p.CanRead && p.CanWrite)
+        .ToList();
+
+        foreach (var p in _props)
+        {
+            var t = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
+            if (t == typeof(DateTime) || t == typeof(DateTime?))
+            {
+                var dv = p.GetValue(Model);
+                _dates[p.Name] = dv is DateTime dt ? (DateTime?)dt : dv as DateTime?;
+            }
+        }
+    }
+
+    async Task Cancel()
+    {
+        if (CancelAction != null) CancelAction();
+        else await OnCancel.InvokeAsync();
+    }
+
+    async Task Ok()
+    {
+        foreach (var p in _props)
+        {
+            var t = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
+            if ((t == typeof(DateTime) || t == typeof(DateTime?)) && _dates.TryGetValue(p.Name, out var dv))
+            {
+                if (t == typeof(DateTime))
+                    p.SetValue(Model, dv ?? default(DateTime));
+                else
+                    p.SetValue(Model, dv);
+            }
+        }
+        if (SubmitAction != null) SubmitAction(Model);
+        else await OnSubmit.InvokeAsync(Model);
+    }
+}

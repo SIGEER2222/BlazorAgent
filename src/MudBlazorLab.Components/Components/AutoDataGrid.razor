@@ -2,17 +2,14 @@
 
 @if (ServerData is null)
 {
-    <MudDataGrid T="TItem"
-                 Items="@ViewSource"
-                 Bordered="@Bordered"
-                 Dense="@Dense"
-                 Hover="@Hover"
-                 Filterable="@Filterable"
-                 FixedHeader="@FixedHeader"
-                 Height="@Height"
-                 ColumnResizeMode="@ColumnResizeMode">
+    <MudDataGrid T="TItem" Items="@ViewSource" Bordered="@Bordered" Dense="@Dense" Hover="@Hover" Filterable="@Filterable"
+        FixedHeader="@FixedHeader" Height="@Height" ColumnResizeMode="@ColumnResizeMode" RowClick="@OnRowClick"
+        @ref="_grid">
         <ToolBarContent>
-            <MudText Typo="Typo.h6">@Title</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.h6">@Title</MudText>
+                @Toolbar
+            </MudStack>
         </ToolBarContent>
         <Columns>
             @foreach (var p in DisplayProps)
@@ -24,9 +21,8 @@
                             @EnumText(ctx.Item, p)
                         </CellTemplate>
                         <FilterTemplate>
-                            <MudSelect T="string" MultiSelection="true" Dense="true"
-                                       SelectedValues="@GetEnumSelectedKeys(p)"
-                                       SelectedValuesChanged="@((IEnumerable<string> vals) => OnEnumSelected(p, vals))">
+                            <MudSelect T="string" MultiSelection="true" Dense="true" SelectedValues="@GetEnumSelectedKeys(p)"
+                                SelectedValuesChanged="@((IEnumerable<string> vals) => OnEnumSelected(p, vals))">
                                 @foreach (var opt in GetEnumOptions(p))
                                 {
                                     <MudSelectItem Value="@opt.Key">@opt.Text</MudSelectItem>
@@ -65,6 +61,14 @@
                     <PropertyColumn T="TItem" TProperty="DateTime?" Property="@(GetLambda<DateTime?>(p))" Title="@p.Name" />
                 }
             }
+            @if (RowActions is not null)
+            {
+                <TemplateColumn T="TItem" Title="操作">
+                    <CellTemplate Context="ctx">
+                        @RowActions(ctx.Item)
+                    </CellTemplate>
+                </TemplateColumn>
+            }
         </Columns>
         <PagerContent>
             <MudDataGridPager T="TItem" />
@@ -73,17 +77,14 @@
 }
 else
 {
-    <MudDataGrid T="TItem"
-                 ServerData="@ServerData"
-                 Bordered="@Bordered"
-                 Dense="@Dense"
-                 Hover="@Hover"
-                 Filterable="@Filterable"
-                 FixedHeader="@FixedHeader"
-                 Height="@Height"
-                 ColumnResizeMode="@ColumnResizeMode">
+    <MudDataGrid T="TItem" ServerData="@ServerData" Bordered="@Bordered" Dense="@Dense" Hover="@Hover"
+        Filterable="@Filterable" FixedHeader="@FixedHeader" Height="@Height" ColumnResizeMode="@ColumnResizeMode"
+        RowClick="@OnRowClick" @ref="_grid">
         <ToolBarContent>
-            <MudText Typo="Typo.h6">@Title</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.h6">@Title</MudText>
+                @Toolbar
+            </MudStack>
         </ToolBarContent>
         <Columns>
             @foreach (var p in DisplayProps)
@@ -95,9 +96,8 @@ else
                             @EnumText(ctx.Item, p)
                         </CellTemplate>
                         <FilterTemplate>
-                            <MudSelect T="string" MultiSelection="true" Dense="true"
-                                       SelectedValues="@GetEnumSelectedKeys(p)"
-                                       SelectedValuesChanged="@((IEnumerable<string> vals) => OnEnumSelected(p, vals))">
+                            <MudSelect T="string" MultiSelection="true" Dense="true" SelectedValues="@GetEnumSelectedKeys(p)"
+                                SelectedValuesChanged="@((IEnumerable<string> vals) => OnEnumSelected(p, vals))">
                                 @foreach (var opt in GetEnumOptions(p))
                                 {
                                     <MudSelectItem Value="@opt.Key">@opt.Text</MudSelectItem>
@@ -135,6 +135,14 @@ else
                 {
                     <PropertyColumn T="TItem" TProperty="DateTime?" Property="@(GetLambda<DateTime?>(p))" Title="@p.Name" />
                 }
+            }
+            @if (RowActions is not null)
+            {
+                <TemplateColumn T="TItem" Title="操作">
+                    <CellTemplate Context="ctx">
+                        @RowActions(ctx.Item)
+                    </CellTemplate>
+                </TemplateColumn>
             }
         </Columns>
         <PagerContent>
