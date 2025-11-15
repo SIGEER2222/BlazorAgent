@@ -26,8 +26,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Inventory.Web\Inventory.Web.csproj" />
-    <ProjectReference Include="..\..\src\MudBlazorLab.Components\MudBlazorLab.Components.csproj" />
+    <ProjectReference Include="..\..\src\apps\Inventory.Web\Inventory.Web.csproj" />
+    <ProjectReference Include="..\..\src\libs\components\MudBlazorLab.Components\MudBlazorLab.Components.csproj" />
   </ItemGroup>
 
 </Project>

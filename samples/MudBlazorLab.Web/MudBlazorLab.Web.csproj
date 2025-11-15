@@ -7,14 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Bogus" Version="35.6.5" />
     <PackageReference Include="MiniExcel" Version="1.41.4" />
     <PackageReference Include="MudBlazor" Version="8.*" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\MudBlazorLab.Components\MudBlazorLab.Components.csproj" />
-    <ProjectReference Include="..\Inventory.Domain\Inventory.Domain.csproj" />
-    <ProjectReference Include="..\Inventory.Infrastructure\Inventory.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\libs\components\MudBlazorLab.Components\MudBlazorLab.Components.csproj" />
   </ItemGroup>
-
 </Project>

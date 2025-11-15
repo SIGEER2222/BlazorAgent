@@ -13,8 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Inventory.Infrastructure\Inventory.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Inventory.Domain\Inventory.Domain.csproj" />
+    <ProjectReference Include="..\..\src\libs\Inventory\Inventory.Infrastructure\Inventory.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\libs\Inventory\Inventory.Domain\Inventory.Domain.csproj" />
   </ItemGroup>
 
 </Project>

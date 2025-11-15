@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\MudBlazorLab.Components\MudBlazorLab.Components.csproj" />
+    <ProjectReference Include="..\..\src\libs\components\MudBlazorLab.Components\MudBlazorLab.Components.csproj" />
   </ItemGroup>
 
 </Project>

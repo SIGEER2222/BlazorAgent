@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Inventory.Web/Inventory.Web.csproj" />
+    <ProjectReference Include="../../src/apps/Inventory.Web/Inventory.Web.csproj" />
   </ItemGroup>
 
 </Project>
