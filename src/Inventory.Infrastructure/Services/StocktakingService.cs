@@ -37,8 +37,9 @@ public class StocktakingService
     public async Task ApplyAsync(int scId)
     {
         var sc = _db.Db.Queryable<StockCount>().First(x => x.Id == scId);
-        if (sc == null) return;
+        if (sc == null || sc.Status != StockCountStatus.Draft) return;
         var lines = await GetLinesAsync(scId);
+        if (lines.Count == 0) return;
         foreach (var l in lines)
         {
             var bal = _db.Db.Queryable<StockBalance>().First(x => x.WarehouseId == l.WarehouseId && x.ProductId == l.ProductId) ?? new StockBalance { WarehouseId = l.WarehouseId, ProductId = l.ProductId, Quantity = 0, AvgCost = 0 };

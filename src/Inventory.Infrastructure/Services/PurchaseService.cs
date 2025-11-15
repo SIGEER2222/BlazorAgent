@@ -22,6 +22,10 @@ public class PurchaseService
 
     public Task<int> CreateAsync(PurchaseOrder po)
     {
+        if (string.IsNullOrWhiteSpace(po.Code))
+            po.Code = $"PO-{DateTime.UtcNow:yyyyMMddHHmmssfff}";
+        po.Remark ??= string.Empty;
+        po.Status = PurchaseOrderStatus.Draft;
         _db.Db.Insertable(po).ExecuteCommand();
         return Task.FromResult(po.Id);
     }
@@ -37,6 +41,10 @@ public class PurchaseService
 
     public Task ApproveAsync(int poId)
     {
+        var po = _db.Db.Queryable<PurchaseOrder>().First(x => x.Id == poId);
+        if (po == null || po.Status != PurchaseOrderStatus.Draft) return Task.CompletedTask;
+        var lines = _db.Db.Queryable<PurchaseOrderLine>().Where(x => x.PurchaseOrderId == poId).Any();
+        if (!lines) return Task.CompletedTask;
         _db.Db.Updateable<PurchaseOrder>().SetColumns(p => new PurchaseOrder { Status = PurchaseOrderStatus.Approved }).Where(p => p.Id == poId).ExecuteCommand();
         return Task.CompletedTask;
     }
@@ -44,7 +52,7 @@ public class PurchaseService
     public async Task ReceiveAsync(int poId)
     {
         var po = _db.Db.Queryable<PurchaseOrder>().First(x => x.Id == poId);
-        if (po == null) return;
+        if (po == null || po.Status != PurchaseOrderStatus.Approved) return;
         var lines = await GetLinesAsync(poId);
         try
         {

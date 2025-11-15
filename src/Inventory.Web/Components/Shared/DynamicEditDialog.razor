@@ -1,0 +1,167 @@
+@using System.Reflection
+@using MudBlazor
+
+@if (!RenderInline)
+{
+  <MudDialog Visible="Visible">
+    <DialogContent>
+      <MudStack Spacing="2">
+        <MudText Typo="Typo.h6">@Title</MudText>
+        @foreach (var p in _props)
+        {
+          @CreateField(p)
+        }
+      </MudStack>
+    </DialogContent>
+    <DialogActions>
+      <MudButton Variant="Variant.Text" OnClick="(()=>Cancel.InvokeAsync(null))">取消</MudButton>
+      <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveClick">保存</MudButton>
+    </DialogActions>
+  </MudDialog>
+}
+else
+{
+  <MudStack Spacing="2">
+    <MudText Typo="Typo.h6">@Title</MudText>
+    @foreach (var p in _props)
+    {
+      @CreateField(p)
+    }
+    <MudStack Direction="Row" Justify="@Justify.FlexEnd" Spacing="1">
+      <MudButton Variant="Variant.Text" OnClick="(()=>Cancel.InvokeAsync(null))">取消</MudButton>
+      <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveClick">保存</MudButton>
+    </MudStack>
+  </MudStack>
+}
+
+@code {
+  [Microsoft.AspNetCore.Components.Parameter] public bool Visible { get; set; }
+  [Microsoft.AspNetCore.Components.Parameter] public bool RenderInline { get; set; }
+  [Microsoft.AspNetCore.Components.Parameter] public string Title { get; set; } = string.Empty;
+  [Microsoft.AspNetCore.Components.Parameter] public object Model { get; set; } = new object();
+  [Microsoft.AspNetCore.Components.Parameter] public EventCallback<object> Save { get; set; }
+  [Microsoft.AspNetCore.Components.Parameter] public EventCallback Cancel { get; set; }
+
+  List<PropertyInfo> _props = new();
+
+  protected override void OnParametersSet()
+  {
+    var t = Model?.GetType();
+    _props = t == null ? new() : t.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+      .Where(p => p.CanRead && p.CanWrite)
+      .ToList();
+  }
+
+  RenderFragment CreateField(PropertyInfo p) => builder =>
+  {
+    var type = p.PropertyType;
+    var underlying = Nullable.GetUnderlyingType(type) ?? type;
+    var label = p.Name;
+    if (underlying == typeof(string))
+    {
+      builder.OpenComponent(0, typeof(MudTextField<string>));
+      builder.AddAttribute(1, "Label", label);
+      builder.AddAttribute(2, "Value", (string?)p.GetValue(Model));
+      builder.AddAttribute(3, "ValueChanged", Microsoft.AspNetCore.Components.EventCallback.Factory.Create<string>(this, v => p.SetValue(Model, v)));
+      builder.CloseComponent();
+    }
+    else if (underlying == typeof(bool))
+    {
+      var v = p.GetValue(Model);
+      var checkedVal = v is bool b ? b : false;
+      builder.OpenComponent(0, typeof(MudSwitch<bool>));
+      builder.AddAttribute(1, "Checked", checkedVal);
+      builder.AddAttribute(2, "CheckedChanged", Microsoft.AspNetCore.Components.EventCallback.Factory.Create<bool>(this, b => p.SetValue(Model, b)));
+      builder.AddAttribute(3, "ChildContent", (RenderFragment)(b2 => { b2.AddContent(0, label); }));
+      builder.CloseComponent();
+    }
+    else if (underlying == typeof(DateTime))
+    {
+      var v = p.GetValue(Model);
+      DateTime? dt = v is DateTime d ? d : v as DateTime?;
+      builder.OpenComponent(0, typeof(MudDatePicker));
+      builder.AddAttribute(1, "Label", label);
+      builder.AddAttribute(2, "Date", dt);
+      builder.AddAttribute(3, "DateChanged", Microsoft.AspNetCore.Components.EventCallback.Factory.Create<DateTime?>(this, d => p.SetValue(Model, d ?? default(DateTime))));
+      builder.CloseComponent();
+    }
+    else if (underlying.IsEnum)
+    {
+      var selectType = typeof(MudSelect<>).MakeGenericType(underlying);
+      var current = p.GetValue(Model);
+      builder.OpenComponent(0, selectType);
+      builder.AddAttribute(1, "Label", label);
+      builder.AddAttribute(2, "Value", current);
+      builder.AddAttribute(3, "ChildContent", (RenderFragment)(b2 =>
+      {
+        foreach (var ev in Enum.GetValues(underlying))
+        {
+          var itemType = typeof(MudSelectItem<>).MakeGenericType(underlying);
+          b2.OpenComponent(0, itemType);
+          b2.AddAttribute(1, "Value", ev);
+          b2.AddAttribute(2, "ChildContent", (RenderFragment)(c => c.AddContent(0, ev.ToString())));
+          b2.CloseComponent();
+        }
+      }));
+      builder.CloseComponent();
+    }
+    else if (underlying == typeof(Guid))
+    {
+      var v = p.GetValue(Model);
+      var s = v is Guid g ? g.ToString() : v?.ToString() ?? string.Empty;
+      builder.OpenComponent(0, typeof(MudTextField<string>));
+      builder.AddAttribute(1, "Label", label);
+      builder.AddAttribute(2, "Value", s);
+      builder.AddAttribute(3, "ValueChanged", Microsoft.AspNetCore.Components.EventCallback.Factory.Create<string>(this, val =>
+      {
+        if (Guid.TryParse(val, out var g2)) p.SetValue(Model, g2);
+      }));
+      builder.CloseComponent();
+    }
+    else if (IsNumeric(underlying))
+    {
+      var s = p.GetValue(Model)?.ToString() ?? string.Empty;
+      builder.OpenComponent(0, typeof(MudTextField<string>));
+      builder.AddAttribute(1, "Label", label);
+      builder.AddAttribute(2, "Value", s);
+      builder.CloseComponent();
+    }
+    else
+    {
+      builder.OpenComponent(0, typeof(MudTextField<string>));
+      builder.AddAttribute(1, "Label", label);
+      builder.AddAttribute(2, "Value", p.GetValue(Model)?.ToString());
+      builder.AddAttribute(3, "ValueChanged", Microsoft.AspNetCore.Components.EventCallback.Factory.Create<string>(this, v => p.SetValue(Model, v)));
+      builder.CloseComponent();
+    }
+  };
+
+  Microsoft.AspNetCore.Components.EventCallback CreateEnumChangedCallback(PropertyInfo p, Type enumType)
+  {
+    var method = typeof(DynamicEditDialog).GetMethod("SetEnumValue", BindingFlags.NonPublic | BindingFlags.Instance)!.MakeGenericMethod(enumType);
+    Action<object> act = v => method.Invoke(this, new object[] { p, v });
+    return Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, act);
+  }
+
+  void SetEnumValue<T>(PropertyInfo p, object v) where T : struct, Enum
+  {
+    if (v is T e) p.SetValue(Model, e);
+  }
+
+  Microsoft.AspNetCore.Components.EventCallback CreateNumericChangedCallback(PropertyInfo p, Type t)
+  {
+    Action<object> act = v => p.SetValue(Model, v);
+    return Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, act);
+  }
+
+  bool IsNumeric(Type t)
+  {
+    var u = Nullable.GetUnderlyingType(t) ?? t;
+    return u == typeof(int) || u == typeof(long) || u == typeof(short) || u == typeof(byte) || u == typeof(float) || u == typeof(double) || u == typeof(decimal);
+  }
+
+  Task SaveClick()
+  {
+    return Save.InvokeAsync(Model);
+  }
+}

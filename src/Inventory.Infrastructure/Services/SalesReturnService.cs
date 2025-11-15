@@ -24,8 +24,9 @@ public class SalesReturnService
 
     public async Task<bool> ProcessAsync(int id)
     {
-        var r = _db.Db.Queryable<SalesReturn>().First(x => x.Id == id); if (r == null) return false;
+        var r = _db.Db.Queryable<SalesReturn>().First(x => x.Id == id); if (r == null || r.Status != ReturnStatus.Draft) return false;
         var lines = await GetLinesAsync(id);
+        if (lines.Count == 0) return false;
         try
         {
             _db.Db.Ado.BeginTran();

@@ -22,6 +22,10 @@ public class SalesService
 
     public Task<int> CreateAsync(SalesOrder so)
     {
+        if (string.IsNullOrWhiteSpace(so.Code))
+            so.Code = $"SO-{DateTime.UtcNow:yyyyMMddHHmmssfff}";
+        so.Remark ??= string.Empty;
+        so.Status = SalesOrderStatus.Draft;
         _db.Db.Insertable(so).ExecuteCommand();
         return Task.FromResult(so.Id);
     }
@@ -37,6 +41,10 @@ public class SalesService
 
     public Task ApproveAsync(int soId)
     {
+        var so = _db.Db.Queryable<SalesOrder>().First(x => x.Id == soId);
+        if (so == null || so.Status != SalesOrderStatus.Draft) return Task.CompletedTask;
+        var lines = _db.Db.Queryable<SalesOrderLine>().Where(x => x.SalesOrderId == soId).Any();
+        if (!lines) return Task.CompletedTask;
         _db.Db.Updateable<SalesOrder>().SetColumns(p => new SalesOrder { Status = SalesOrderStatus.Approved }).Where(p => p.Id == soId).ExecuteCommand();
         return Task.CompletedTask;
     }
@@ -44,7 +52,7 @@ public class SalesService
     public async Task<bool> ShipAsync(int soId)
     {
         var so = _db.Db.Queryable<SalesOrder>().First(x => x.Id == soId);
-        if (so == null) return false;
+        if (so == null || so.Status != SalesOrderStatus.Approved) return false;
         var lines = await GetLinesAsync(soId);
         try
         {

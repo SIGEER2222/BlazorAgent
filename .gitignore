@@ -30,3 +30,13 @@ bin-release/
 **/node_modules/**
 
 **/Debug/**
+**.db
+src/Inventory.Web/App_Data/inventory.db
+*.db
+**/*.db
+*.sqlite
+**/*.sqlite
+src/**/App_Data/*.db
+src/**/App_Data/*.sqlite
+*.xlsx
+**/TestResults/**

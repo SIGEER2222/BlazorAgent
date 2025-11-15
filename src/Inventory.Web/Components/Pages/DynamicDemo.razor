@@ -1,0 +1,54 @@
+@page "/demo/dynamic"
+@using MudBlazor
+@using global::Inventory.Web.Components.Shared
+
+<PageTitle>动态编辑演示</PageTitle>
+
+<MudStack Spacing="2">
+  <MudText Typo="Typo.h5">动态编辑演示</MudText>
+  <MudPaper Class="pa-4">
+    <MudStack Spacing="2">
+      <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Open">打开弹窗</MudButton>
+      <MudText Typo="Typo.body1">保存结果：</MudText>
+      <MudText Typo="Typo.body2">@_result</MudText>
+    </MudStack>
+  </MudPaper>
+</MudStack>
+
+<DynamicEditDialog Visible="_visible" Title="编辑 DTO" Model="_dto" Save="OnSave" Cancel="OnCancel" />
+
+@code {
+  bool _visible;
+  string _result = string.Empty;
+  AllTypesDto _dto = new();
+
+  void Open() { _visible = true; }
+  Task OnCancel() { _visible = false; return Task.CompletedTask; }
+  Task OnSave(object m) { _visible = false; _result = System.Text.Json.JsonSerializer.Serialize(m); return Task.CompletedTask; }
+
+  public enum DemoEnum { A, B, C }
+  public class AllTypesDto {
+    public string? Name { get; set; } = "示例";
+    public bool Enabled { get; set; } = true;
+    public int Count { get; set; } = 1;
+    public int? CountOpt { get; set; } = null;
+    public long Total { get; set; } = 2;
+    public long? TotalOpt { get; set; } = null;
+    public short Small { get; set; } = 3;
+    public short? SmallOpt { get; set; } = null;
+    public byte ByteVal { get; set; } = 4;
+    public byte? ByteOpt { get; set; } = null;
+    public float Ratio { get; set; } = 1.5f;
+    public float? RatioOpt { get; set; } = null;
+    public double Price { get; set; } = 2.5;
+    public double? PriceOpt { get; set; } = null;
+    public decimal Amount { get; set; } = 3.5m;
+    public decimal? AmountOpt { get; set; } = null;
+    public DateTime Date { get; set; } = DateTime.Today;
+    public DateTime? DateOpt { get; set; } = null;
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? IdOpt { get; set; } = null;
+    public DemoEnum Status { get; set; } = DemoEnum.A;
+    public DemoEnum? StatusOpt { get; set; } = null;
+  }
+}

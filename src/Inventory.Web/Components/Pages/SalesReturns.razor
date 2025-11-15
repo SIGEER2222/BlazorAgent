@@ -13,9 +13,9 @@
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewReturn" StartIcon="@Icons.Material.Filled.Undo">新建退货</MudButton>
             </Toolbar>
             <RowActions Context="r">
-                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" Title="加行" OnClick="@(()=>AddLine(r))" />
-                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Primary" Size="Size.Small" Title="处理退货" OnClick="@(()=>Process(r))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Title="删除" OnClick="@(()=>Delete(r))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" Disabled="@(r.Status!=ReturnStatus.Draft)" OnClick="@(()=>AddLine(r))" />
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Primary" Size="Size.Small" Disabled="@(r.Status!=ReturnStatus.Draft)" OnClick="@(()=>Process(r))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Disabled="@(r.Status!=ReturnStatus.Draft)" OnClick="@(()=>Delete(r))" />
             </RowActions>
         </AutoDataGrid>
     </MudPaper>
@@ -50,7 +50,7 @@
     async Task SaveLine()
     {
         var p = await ProductSvc.FindByCodeAsync(_line.ProductCode);
-        if (p == null || _current == null) { _dlgLine = false; return; }
+        if (p == null || _current == null || _line.Quantity<=0 || _line.UnitPrice<0) { _dlgLine = false; return; }
         await ReturnSvc.AddLineAsync(new SalesReturnLine { SalesReturnId = _current.Id, ProductId = p.Id, WarehouseId = _line.WarehouseId, Quantity = _line.Quantity, UnitPrice = _line.UnitPrice });
         _dlgLine = false;
     }
@@ -64,11 +64,11 @@
     string ToWhString(int id) => _whDisplay.TryGetValue(id, out var s) ? s : id.ToString();
 }
 
-<MudDialog IsVisible="_dlgReturn" DisableBackdropClick="true">
+<MudDialog Visible="_dlgReturn">
     <DialogContent>
         <MudStack Spacing="2">
-            <MudTextField @bind-Value="_editing.Code" Label="退货单号" Required="true" InputAttributes="new() { { \"data-testid\", \"sr-code\" } }" />
-            <MudTextField @bind-Value="_editing.CustomerCode" Label="客户代码" Required="true" InputAttributes="new() { { \"data-testid\", \"sr-customer\" } }" />
+            <MudTextField @bind-Value="_editing.Code" Label="退货单号" Required="true" />
+            <MudTextField @bind-Value="_editing.CustomerCode" Label="客户代码" Required="true" />
             <MudTextField @bind-Value="_editing.Remark" Label="备注" />
         </MudStack>
     </DialogContent>
@@ -78,13 +78,13 @@
     </DialogActions>
 </MudDialog>
 
-<MudDialog IsVisible="_dlgLine" DisableBackdropClick="true">
+<MudDialog Visible="_dlgLine">
     <DialogContent>
         <MudStack Spacing="2">
-            <MudAutocomplete T="string" @bind-Value="_line.ProductCode" Label="产品代码" SearchFunc="SearchProductCodes" Dense="true" InputAttributes="new() { { \"data-testid\", \"sr-line-product\" } }" />
-            <MudAutocomplete T="int" @bind-Value="_line.WarehouseId" Label="仓库" SearchFunc="SearchWarehouses" ToStringFunc="ToWhString" Dense="true" InputAttributes="new() { { \"data-testid\", \"sr-line-warehouse\" } }" />
-            <MudNumericField @bind-Value="_line.Quantity" Label="数量" Required="true" InputAttributes="new() { { \"data-testid\", \"sr-line-qty\" } }" />
-            <MudNumericField @bind-Value="_line.UnitPrice" Label="单价" Required="true" InputAttributes="new() { { \"data-testid\", \"sr-line-price\" } }" />
+            <MudAutocomplete T="string" @bind-Value="_line.ProductCode" Label="产品代码" SearchFunc="SearchProductCodes" Dense="true" />
+            <MudAutocomplete T="int" @bind-Value="_line.WarehouseId" Label="仓库" SearchFunc="SearchWarehouses" ToStringFunc="ToWhString" Dense="true" />
+            <MudNumericField @bind-Value="_line.Quantity" Label="数量" Required="true" />
+            <MudNumericField @bind-Value="_line.UnitPrice" Label="单价" Required="true" />
         </MudStack>
     </DialogContent>
     <DialogActions>

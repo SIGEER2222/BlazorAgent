@@ -10,7 +10,7 @@
             <Toolbar>
                 <MudTextField @bind-Value="_keyword" Placeholder="搜索代码/名称" Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
                 <MudSpacer />
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewItem" StartIcon="@Icons.Material.Filled.Add">新建</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!_canCreate)" OnClick="TryNew" StartIcon="@Icons.Material.Filled.Add">新建</MudButton>
             </Toolbar>
             <RowActions Context="item">
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>Edit(item))" />
@@ -37,36 +37,34 @@
 
     Supplier _editing = new();
     bool _dialogOpen;
+    bool _canCreate;
 
     void NewItem() { _editing = new Supplier { Enabled = true }; _dialogOpen = true; }
+    void TryNew() { if (!_canCreate) { Snackbar.Add("当前账号无权限新建", Severity.Warning); return; } Snackbar.Add("开始新建", Severity.Info); NewItem(); }
     void Edit(Supplier p) { _editing = new Supplier { Id = p.Id, Code = p.Code, Name = p.Name, Contact = p.Contact, Phone = p.Phone, Email = p.Email, Address = p.Address, Enabled = p.Enabled }; _dialogOpen = true; }
     async Task Delete(Supplier p) { await Svc.DeleteAsync(p.Id); _grid?.Reload(); }
 }
 
-<MudDialog IsVisible="_dialogOpen" DisableBackdropClick="true">
-    <DialogContent>
-        <MudStack Spacing="2">
-            <MudTextField @bind-Value="_editing.Code" Label="代码" Required="true" />
-            <MudTextField @bind-Value="_editing.Name" Label="名称" Required="true" />
-            <MudTextField @bind-Value="_editing.Contact" Label="联系人" />
-            <MudTextField @bind-Value="_editing.Phone" Label="电话" />
-            <MudTextField @bind-Value="_editing.Email" Label="邮箱" />
-            <MudTextField @bind-Value="_editing.Address" Label="地址" />
-            <MudSwitch T="bool" Checked="@_editing.Enabled" CheckedChanged="@OnCheckedChanged">启用</MudSwitch>
-        </MudStack>
-    </DialogContent>
-    <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="@(()=>_dialogOpen=false)">取消</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">保存</MudButton>
-    </DialogActions>
-</MudDialog>
+@using global::Inventory.Web.Components.Shared
+<DynamicEditDialog Visible="_dialogOpen" Title="编辑供应商" Model="_editing" Save="OnDialogSave" Cancel="OnDialogCancel" />
 
 @code {
+    [Microsoft.AspNetCore.Components.Inject]
+    MudBlazor.ISnackbar Snackbar { get; set; } = default!;
+    [Microsoft.AspNetCore.Components.CascadingParameter]
+    Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> AuthTask { get; set; } = default!;
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Yield();
+        _canCreate = true;
+    }
     Task OnCheckedChanged(bool v) { _editing.Enabled = v; return Task.CompletedTask; }
     async Task Save()
     {
         if (_editing.Id == 0) await Svc.CreateAsync(_editing); else await Svc.UpdateAsync(_editing);
         _dialogOpen = false; _grid?.Reload();
     }
+    Task OnDialogCancel() { _dialogOpen = false; return Task.CompletedTask; }
+    Task OnDialogSave(object m) { if (m is Supplier c) _editing = c; return Save(); }
 }
 @attribute [Authorize(Roles="Editor,Manager,Admin")]

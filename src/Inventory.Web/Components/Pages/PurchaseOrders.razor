@@ -13,10 +13,10 @@
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewOrder" StartIcon="@Icons.Material.Filled.Add">新建订单</MudButton>
             </Toolbar>
             <RowActions Context="po">
-                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" Title="加行" OnClick="@(()=>AddLine(po))" />
-                <MudIconButton Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small" Title="审批" OnClick="@(()=>Approve(po))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Inventory" Color="Color.Primary" Size="Size.Small" Title="收货入库" OnClick="@(()=>Receive(po))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Title="删除" OnClick="@(()=>Delete(po))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" Disabled="@(po.Status!=PurchaseOrderStatus.Draft)" OnClick="@(()=>AddLine(po))" />
+                <MudIconButton Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small" Disabled="@(po.Status!=PurchaseOrderStatus.Draft)" OnClick="@(()=>Approve(po))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Inventory" Color="Color.Primary" Size="Size.Small" Disabled="@(po.Status!=PurchaseOrderStatus.Approved)" OnClick="@(()=>Receive(po))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Disabled="@(po.Status!=PurchaseOrderStatus.Draft)" OnClick="@(()=>Delete(po))" />
             </RowActions>
         </AutoDataGrid>
     </MudPaper>
@@ -40,8 +40,8 @@
 
     PurchaseOrder _editing = new();
     bool _dlgOrder;
-    void NewOrder() { _editing = new PurchaseOrder { Status = PurchaseOrderStatus.Draft }; _dlgOrder = true; }
-    async Task SaveOrder() { if (_editing.Id == 0) await PurchaseSvc.CreateAsync(_editing); _dlgOrder = false; _grid?.Reload(); }
+    void NewOrder() { _editing = new PurchaseOrder { Status = PurchaseOrderStatus.Draft, Remark = string.Empty }; _dlgOrder = true; }
+    async Task SaveOrder() { _editing.Remark ??= string.Empty; if (_editing.Id == 0) await PurchaseSvc.CreateAsync(_editing); _dlgOrder = false; _grid?.Reload(); }
 
     bool _dlgLine;
     PurchaseOrder? _current;
@@ -51,7 +51,7 @@
     async Task SaveLine()
     {
         var p = await ProductSvc.FindByCodeAsync(_line.ProductCode);
-        if (p == null || _current == null) { _dlgLine = false; return; }
+        if (p == null || _current == null || _line.Quantity<=0 || _line.UnitPrice<0) { _dlgLine = false; return; }
         await PurchaseSvc.AddLineAsync(new PurchaseOrderLine { PurchaseOrderId = _current.Id, ProductId = p.Id, WarehouseId = _line.WarehouseId, Quantity = _line.Quantity, UnitPrice = _line.UnitPrice });
         _dlgLine = false;
     }
@@ -61,12 +61,12 @@
     async Task Delete(PurchaseOrder po) { var ok = await PurchaseSvc.DeleteAsync(po.Id); _grid?.Reload(); }
 }
 
-<MudDialog IsVisible="_dlgOrder" DisableBackdropClick="true">
+<MudDialog Visible="_dlgOrder">
     <DialogContent>
         <div data-testid="po-dialog">
         <MudStack Spacing="2">
-            <MudTextField @bind-Value="_editing.Code" Label="订单号" Placeholder="订单号" Required="true" InputAttributes="new() { { \"data-testid\", \"po-code\" } }" />
-            <MudTextField @bind-Value="_editing.SupplierCode" Label="供应商代码" Placeholder="供应商代码" Required="true" InputAttributes="new() { { \"data-testid\", \"po-supplier\" } }" />
+            <MudTextField @bind-Value="_editing.Code" Label="订单号" Placeholder="订单号" Required="true" />
+            <MudTextField @bind-Value="_editing.SupplierCode" Label="供应商代码" Placeholder="供应商代码" Required="true" />
             <MudTextField @bind-Value="_editing.Remark" Label="备注" />
         </MudStack>
         </div>
@@ -77,14 +77,14 @@
     </DialogActions>
 </MudDialog>
 
-<MudDialog IsVisible="_dlgLine" DisableBackdropClick="true">
+<MudDialog Visible="_dlgLine">
     <DialogContent>
         <div data-testid="po-line-dialog">
         <MudStack Spacing="2">
-            <MudAutocomplete T="string" @bind-Value="_line.ProductCode" Label="产品代码" Placeholder="产品代码" SearchFunc="SearchProductCodes" Dense="true" InputAttributes="new() { { \"data-testid\", \"po-line-product\" } }" />
-            <MudAutocomplete T="int" @bind-Value="_line.WarehouseId" Label="仓库" Placeholder="仓库" SearchFunc="SearchWarehouses" ToStringFunc="ToWhString" Dense="true" InputAttributes="new() { { \"data-testid\", \"po-line-warehouse\" } }" />
-            <MudNumericField @bind-Value="_line.Quantity" Label="数量" Placeholder="数量" Required="true" InputAttributes="new() { { \"data-testid\", \"po-line-qty\" } }" />
-            <MudNumericField @bind-Value="_line.UnitPrice" Label="单价" Placeholder="单价" Required="true" InputAttributes="new() { { \"data-testid\", \"po-line-price\" } }" />
+            <MudAutocomplete T="string" @bind-Value="_line.ProductCode" Label="产品代码" Placeholder="产品代码" SearchFunc="SearchProductCodes" Dense="true" />
+            <MudAutocomplete T="int" @bind-Value="_line.WarehouseId" Label="仓库" Placeholder="仓库" SearchFunc="SearchWarehouses" ToStringFunc="ToWhString" Dense="true" />
+            <MudNumericField @bind-Value="_line.Quantity" Label="数量" Placeholder="数量" Required="true" />
+            <MudNumericField @bind-Value="_line.UnitPrice" Label="单价" Placeholder="单价" Required="true" />
         </MudStack>
         </div>
     </DialogContent>

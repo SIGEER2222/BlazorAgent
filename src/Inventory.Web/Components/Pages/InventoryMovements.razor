@@ -12,7 +12,7 @@
             <MudDatePicker @bind-Date="_end" Label="结束日期" />
             <MudButton Variant="Variant.Outlined" OnClick="Reload" StartIcon="@Icons.Material.Filled.Search">查询</MudButton>
             <MudSpacer />
-            <MudLink Href="@ExportHref" StartIcon="@Icons.Material.Filled.Download">导出 Excel</MudLink>
+            <MudLink Href="@ExportHref"><MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-1" />导出 Excel</MudLink>
         </Toolbar>
     </AutoDataGrid>
 </MudPaper>
