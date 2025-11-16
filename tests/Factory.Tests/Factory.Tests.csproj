@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit" Version="2.6.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.6.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\libs\factory\Factory.Domain\Factory.Domain.csproj" />
+    <ProjectReference Include="..\..\src\libs\factory\Factory.Simulation\Factory.Simulation.csproj" />
+    <ProjectReference Include="..\..\src\libs\factory\Factory.Infrastructure\Factory.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,35 @@
+@page "/reports"
+@using Factory.Simulation.Engine
+@inject SimulationEngine Engine
+
+<PageTitle>Reports</PageTitle>
+
+<MudStack Spacing="2">
+    <MudPaper Class="pa-4">
+        <MudText Typo="Typo.h6">Summary</MudText>
+        <MudStack Direction="Direction.Row" Spacing="2">
+            <MudText>Elapsed: @Engine.ElapsedSeconds s</MudText>
+            <MudText>Energy: @Engine.TotalEnergyKWh kWh</MudText>
+        </MudStack>
+    </MudPaper>
+
+    <MudPaper Class="pa-4">
+        <MudText Typo="Typo.h6">Produced</MudText>
+        <MudTable Items="Engine.Produced">
+            <HeaderContent>
+                <MudTh>Item</MudTh>
+                <MudTh>Amount</MudTh>
+                <MudTh>Throughput (per s)</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Item">@context.Key</MudTd>
+                <MudTd DataLabel="Amount">@context.Value</MudTd>
+                <MudTd DataLabel="Throughput">@Throughput(context.Value)</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+</MudStack>
+
+@code {
+    double Throughput(double amount) => Engine.ElapsedSeconds > 0 ? Math.Round(amount / Engine.ElapsedSeconds, 3) : 0;
+}

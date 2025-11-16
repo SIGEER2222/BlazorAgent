@@ -6,6 +6,7 @@
   </Configurations>
   <Folder Name="/src/apps/">
     <Project Path="src/apps/Inventory.Web/Inventory.Web.csproj" />
+    <Project Path="src/apps/Factory.Web/Factory.Web.csproj" />
   </Folder>
   <Folder Name="/src/libs/Inventory/">
     <Project Path="src/libs/Inventory/Inventory.Domain/Inventory.Domain.csproj" />
@@ -13,6 +14,12 @@
   </Folder>
   <Folder Name="/src/libs/components/">
     <Project Path="src/libs/components/MudBlazorLab.Components/MudBlazorLab.Components.csproj" />
+    <Project Path="src/libs/components/Factory.Components/Factory.Components.csproj" />
+  </Folder>
+  <Folder Name="/src/libs/factory/">
+    <Project Path="src/libs/factory/Factory.Domain/Factory.Domain.csproj" />
+    <Project Path="src/libs/factory/Factory.Simulation/Factory.Simulation.csproj" />
+    <Project Path="src/libs/factory/Factory.Infrastructure/Factory.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/MudBlazorLab.Web/MudBlazorLab.Web.csproj" Id="f22376ad-d0ef-4931-a8b4-53e8b7f377af" />

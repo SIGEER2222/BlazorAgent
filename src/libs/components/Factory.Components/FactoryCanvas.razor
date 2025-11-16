@@ -1,0 +1,20 @@
+<MudPaper Class="pa-4">
+  <div style="display:grid;grid-template-columns:repeat(12,40px);grid-template-rows:repeat(8,40px);gap:4px;">
+    @for (int r = 0; r < 8; r++)
+    {
+        @for (int c = 0; c < 12; c++)
+        {
+            <div style="width:40px;height:40px;border:1px dashed #444;border-radius:4px;"></div>
+        }
+    }
+    <div style="grid-column:3 / span 2; grid-row:3 / span 2; background:#4a86ff;color:white;border-radius:6px;display:flex;align-items:center;justify-content:center;">
+        Assembler
+    </div>
+    <div style="grid-column:1 / span 2; grid-row:4; background:#7e6fff;color:white;border-radius:6px;display:flex;align-items:center;justify-content:center;">
+        Belt
+    </div>
+    <div style="grid-column:6 / span 2; grid-row:4; background:#3dcb6c;color:white;border-radius:6px;display:flex;align-items:center;justify-content:center;">
+        Output
+    </div>
+  </div>
+</MudPaper>

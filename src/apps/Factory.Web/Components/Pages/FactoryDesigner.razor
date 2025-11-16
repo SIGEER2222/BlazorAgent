@@ -1,0 +1,107 @@
+@page "/factory"
+@using Factory.Components
+@using MudBlazor
+@using Factory.Domain.Entities
+@using Factory.Simulation.Engine
+@using Factory.Infrastructure.Repositories
+
+<PageTitle>Factory Designer</PageTitle>
+
+<MudStack Spacing="2">
+    <MudPaper Class="pa-4">
+        <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Start">Start</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="Pause">Pause</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" OnClick="Step">Step</MudButton>
+            <MudText>Step Seconds: @(_stepSeconds)</MudText>
+            <MudSlider @bind-Value="_stepSeconds" Min="0.1" Max="2" Step="0.1" Style="width:200px" />
+        </MudStack>
+    </MudPaper>
+
+    <MudPaper Class="pa-4">
+        <FactoryCanvas />
+    </MudPaper>
+
+    <MudPaper Class="pa-4">
+        <MudText Typo="Typo.h6">Inventory</MudText>
+        <MudTable Items="_inventoryEntries">
+            <HeaderContent>
+                <MudTh>Item</MudTh>
+                <MudTh>Amount</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Item">@context.itemId</MudTd>
+                <MudTd DataLabel="Amount">@context.amount</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+
+    <MudPaper Class="pa-4">
+        <MudText Typo="Typo.h6">Metrics</MudText>
+        <MudStack Direction="Direction.Row" Spacing="2">
+            <MudText>Elapsed: @_elapsedSeconds s</MudText>
+            <MudText>Energy: @_engine.TotalEnergyKWh kWh</MudText>
+        </MudStack>
+        <MudTable Items="_producedEntries">
+            <HeaderContent>
+                <MudTh>Item</MudTh>
+                <MudTh>Produced</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Item">@context.itemId</MudTd>
+                <MudTd DataLabel="Produced">@context.amount</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+</MudStack>
+
+@code {
+    @inject SimulationEngine _engine
+    @inject ICatalogRepository _catalog
+    List<Recipe> _recipes = new();
+    double _stepSeconds = 1;
+    PeriodicTimer? _timer;
+    CancellationTokenSource? _cts;
+    double _elapsedSeconds = 0;
+
+    protected override void OnInitialized()
+    {
+        _recipes = _catalog.GetRecipes().ToList();
+        if (!_engine.Inventory.ContainsKey("iron-ore"))
+            _engine.Seed("iron-ore", 10);
+        base.OnInitialized();
+    }
+
+    IEnumerable<(string itemId, double amount)> _inventoryEntries => _engine.Inventory.Select(kv => (kv.Key, kv.Value));
+    IEnumerable<(string itemId, double amount)> _producedEntries => _engine.Produced.Select(kv => (kv.Key, kv.Value));
+
+    async Task RunLoop()
+    {
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
+        while (await _timer.WaitForNextTickAsync(_cts.Token))
+        {
+            _engine.Step(_stepSeconds, _recipes);
+            _elapsedSeconds += _stepSeconds;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    void Start()
+    {
+        _engine.Start();
+        _ = RunLoop();
+    }
+
+    void Pause()
+    {
+        _engine.Stop();
+        _cts?.Cancel();
+    }
+
+    void Step()
+    {
+        _engine.Step(_stepSeconds, _recipes);
+    }
+}
