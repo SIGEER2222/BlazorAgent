@@ -1,0 +1,48 @@
+@using Bogus
+@using MudBlazor
+@using MudBlazorLab.Components.Models
+
+<MudStack Spacing="2">
+  <MudTextField T="string" Label="模板名称" @bind-Value="_name" />
+  <MudTextField T="string" Label="版本" @bind-Value="_version" />
+  <MudTextField T="string" Label="检验水平" @bind-Value="_level" />
+  <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+    <MudButton Variant="Variant.Text" OnClick="Cancel">取消</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Ok">确定</MudButton>
+  </MudStack>
+</MudStack>
+
+@code {
+  [Parameter] public EventCallback OnCancel { get; set; }
+  [Parameter] public EventCallback<InspectionTemplate> OnSubmit { get; set; }
+
+  string _name = string.Empty;
+  string _version = "v1";
+  string _level = "II";
+
+  protected override void OnInitialized()
+  {
+    var faker = new Faker("zh_CN");
+    _name = faker.Commerce.Department() + "_模板";
+  }
+
+  async Task Cancel() { await OnCancel.InvokeAsync(); }
+  async Task Ok()
+  {
+    var tpl = new InspectionTemplate
+    {
+      Name = _name,
+      Version = _version,
+      Type = InspectionType.IQC,
+      InspectionLevel = _level,
+      Items = new List<InspectionItem>
+      {
+        new InspectionItem { Name = "高度", Kind = "dimension", Required = true, Threshold = "0.1-1.0" },
+        new InspectionItem { Name = "长度", Kind = "dimension", Required = true, Threshold = "0.1-2.0" },
+        new InspectionItem { Name = "重量", Kind = "weight", Required = false, Threshold = ">=0.01" }
+      }
+    };
+    await OnSubmit.InvokeAsync(tpl);
+  }
+}
+

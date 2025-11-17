@@ -1,0 +1,79 @@
+@using Bogus
+@using MudBlazor
+@using MudBlazorLab.Components.Models
+
+<MudStack Spacing="2">
+  <MudTextField T="string" Label="对象类型" @bind-Value="_type" />
+  <MudTextField T="string" Label="对象名称" @bind-Value="_name" />
+  <MudTextField T="string" Label="批次" @bind-Value="_batch" />
+  <MudNumericField T="int" Label="总量" @bind-Value="_total" />
+  <MudTextField T="string" Label="抽样率" Value="@_sampleRate" />
+  <MudSelect T="string" Label="校验结果" @bind-Value="_result">
+    <MudSelectItem Value="@("OK")">OK</MudSelectItem>
+    <MudSelectItem Value="@("NG")">NG</MudSelectItem>
+  </MudSelect>
+  <MudDatePicker Label="创建日期" @bind-Date="_createdAt" />
+  <MudTextField T="string" Label="创建人" @bind-Value="_creator" />
+  <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+    <MudButton Variant="Variant.Text" OnClick="Cancel">取消</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Ok">确定</MudButton>
+  </MudStack>
+</MudStack>
+
+@code {
+  [Parameter] public DocHeader? Doc { get; set; }
+  [Parameter] public InspectionTemplate? Template { get; set; }
+  [Parameter] public EventCallback OnCancel { get; set; }
+  [Parameter] public EventCallback<ObjectRow> OnSubmit { get; set; }
+
+  string _type = "来料物料";
+  string _name = string.Empty;
+  string _batch = string.Empty;
+  int _total = 100;
+  string _sampleRate = string.Empty;
+  string _result = "OK";
+  DateTime? _createdAt;
+  string _creator = string.Empty;
+
+  protected override void OnInitialized()
+  {
+    var faker = new Faker("zh_CN");
+    _name = faker.Commerce.ProductName();
+    _batch = $"B{DateTime.Now:yyMMdd}-{faker.Random.Int(1, 999):000}";
+    _total = faker.Random.Int(50, 200);
+    _createdAt = DateTime.Now;
+    _creator = Doc?.Creator ?? faker.Name.FullName();
+    RecomputeRate();
+  }
+
+  async Task Cancel() { await OnCancel.InvokeAsync(); }
+
+  async Task Ok()
+  {
+    var qty = Math.Max(_total, 1);
+    var level = Template?.InspectionLevel ?? "II";
+    var sampleSize = MudBlazorLab.Components.Services.AqlService.ComputeSampleSize(qty, level);
+    var rate = Math.Round(sampleSize * 100.0 / Math.Max(qty, 1), 1) + "%";
+    var obj = new ObjectRow
+    {
+      DocNo = Doc?.DocNo ?? string.Empty,
+      ObjectType = _type,
+      ObjectName = _name,
+      Batch = _batch,
+      Total = qty,
+      SampleRateText = rate,
+      Result = _result,
+      CreatedAt = _createdAt ?? DateTime.Now,
+      Creator = _creator
+    };
+    await OnSubmit.InvokeAsync(obj);
+  }
+
+  void RecomputeRate()
+  {
+    var qty = Math.Max(_total, 1);
+    var level = Template?.InspectionLevel ?? "II";
+    var sampleSize = MudBlazorLab.Components.Services.AqlService.ComputeSampleSize(qty, level);
+    _sampleRate = Math.Round(sampleSize * 100.0 / Math.Max(qty, 1), 1) + "%";
+  }
+}

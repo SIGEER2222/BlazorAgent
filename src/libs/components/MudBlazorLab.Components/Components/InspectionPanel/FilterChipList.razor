@@ -1,0 +1,35 @@
+@typeparam TItem
+@using MudBlazor
+
+<MudIconButton Icon="@Icons.Material.Filled.FilterAlt" Size="Size.Small" Color="Color.Default"
+  OnClick="@(() => _open = !_open)" />
+<MudPopover Open="@_open" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+  <MudList T="object" Dense="true">
+    @foreach (var it in Options)
+    {
+      <MudListItem T="object" Button="true" OnClick="@(() => Toggle(it))">
+        <MudChip Color="@(Selected.Contains(it) ? Color.Primary : Color.Default)" Variant="Variant.Outlined">
+          @ToLabel(it)
+        </MudChip>
+      </MudListItem>
+    }
+  </MudList>
+  @* <MudStack Row="true" Justify="Justify.FlexEnd" Class="pa-2">
+    <MudButton Variant="Variant.Text" OnClick="@(() => { Selected.Clear(); Apply.InvokeAsync(Selected); })">清空</MudButton>
+  </MudStack> *@
+</MudPopover>
+
+@code {
+  [Parameter] public IEnumerable<TItem> Options { get; set; } = Enumerable.Empty<TItem>();
+  [Parameter] public HashSet<TItem> Selected { get; set; } = new();
+  [Parameter] public Func<TItem, string> ToLabel { get; set; } = _ => string.Empty;
+  [Parameter] public EventCallback<HashSet<TItem>> Apply { get; set; }
+
+  bool _open;
+
+  void Toggle(TItem it)
+  {
+    if (Selected.Contains(it)) Selected.Remove(it); else Selected.Add(it);
+    Apply.InvokeAsync(Selected);
+  }
+}

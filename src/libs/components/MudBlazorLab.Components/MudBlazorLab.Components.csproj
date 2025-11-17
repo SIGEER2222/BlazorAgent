@@ -18,6 +18,14 @@
     <PackageReference Include="Serilog.Settings.Configuration" Version="*" />
     <PackageReference Include="Serilog.Sinks.Console" Version="*" />
     <PackageReference Include="Serilog.Sinks.File" Version="*" />
+    <PackageReference Include="Bogus" Version="35.*" />
+    <PackageReference Include="RabbitMQ.Client" Version="6.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Mom.RabbitMQ.Communication">
+      <HintPath>..\..\..\..\others\lib\Mom.RabbitMQ.Communication.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

@@ -7,47 +7,48 @@
     <MudStack Spacing="2">
         @foreach (var p in _props)
         {
-            if (p.Name == "Id")
+            if (ExcludedProperties != null && ExcludedProperties.Contains(p.Name))
             {
                 continue;
             }
             var t = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
+            var label = (DisplayNames != null && DisplayNames.TryGetValue(p.Name, out var dn)) ? dn : p.Name;
             if (t == typeof(string))
             {
-                <MudTextField T="string" Label="@p.Name" Value="@((string?)p.GetValue(Model))"
+                <MudTextField T="string" Label="@label" Value="@((string?)p.GetValue(Model))"
                     ValueChanged="@OnStringChanged(p)" />
             }
             else if (t == typeof(int))
             {
-                <MudNumericField T="int" Label="@p.Name" Value="@((int)(p.GetValue(Model) ?? 0))"
+                <MudNumericField T="int" Label="@label" Value="@((int)(p.GetValue(Model) ?? 0))"
                     ValueChanged="@OnIntChanged(p)" />
             }
             else if (t == typeof(decimal))
             {
-                <MudNumericField T="decimal" Label="@p.Name" Value="@((decimal)(p.GetValue(Model) ?? 0m))"
+                <MudNumericField T="decimal" Label="@label" Value="@((decimal)(p.GetValue(Model) ?? 0m))"
                     ValueChanged="@OnDecimalChanged(p)" />
             }
             else if (t == typeof(double))
             {
-                <MudNumericField T="double" Label="@p.Name" Value="@((double)(p.GetValue(Model) ?? 0d))"
+                <MudNumericField T="double" Label="@label" Value="@((double)(p.GetValue(Model) ?? 0d))"
                     ValueChanged="@OnDoubleChanged(p)" />
             }
             else if (t == typeof(bool))
             {
-                <MudSwitch T="bool" Label="@p.Name" Checked="@((bool)(p.GetValue(Model) ?? false))"
+                <MudSwitch T="bool" Label="@label" Checked="@((bool)(p.GetValue(Model) ?? false))"
                     CheckedChanged="@OnBoolChanged(p)" />
             }
             else if (t == typeof(DateTime))
             {
-                <MudDatePicker Label="@p.Name" @bind-Date="_dates[p.Name]" />
+                <MudDatePicker Label="@label" @bind-Date="_dates[p.Name]" />
             }
             else if (t == typeof(DateTime?))
             {
-                <MudDatePicker Label="@p.Name" @bind-Date="_dates[p.Name]" />
+                <MudDatePicker Label="@label" @bind-Date="_dates[p.Name]" />
             }
             else
             {
-                <MudText Typo="Typo.body2">不支持的类型：@p.Name (@t.Name)</MudText>
+                continue;
             }
         }
         <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
@@ -61,6 +62,8 @@
     [Parameter] public string Title { get; set; } = "添加";
     [Parameter] public TModel Model { get; set; } = default!;
     [Parameter] public Dictionary<string, object?>? Defaults { get; set; }
+    [Parameter] public Dictionary<string, string>? DisplayNames { get; set; }
+    [Parameter] public HashSet<string>? ExcludedProperties { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback<TModel> OnSubmit { get; set; }
     [Parameter] public Action? CancelAction { get; set; }
@@ -115,6 +118,7 @@
     {
         if (CancelAction != null) CancelAction();
         else await OnCancel.InvokeAsync();
+        
     }
 
     async Task Ok()
@@ -132,5 +136,6 @@
         }
         if (SubmitAction != null) SubmitAction(Model);
         else await OnSubmit.InvokeAsync(Model);
+        
     }
 }

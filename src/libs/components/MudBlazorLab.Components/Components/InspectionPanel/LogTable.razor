@@ -1,0 +1,75 @@
+@using MudBlazor
+@using MudBlazorLab.Components.Models
+
+<MudDataGrid T="LogEntry" Items="@ViewItems" Bordered="true" Dense="true" Hover="true" Filterable="true"
+    FilterMode="@DataGridFilterMode.ColumnFilterRow" FixedHeader=true Height="@Height"
+    ColumnResizeMode="ResizeMode.Container" RowsPerPage="@PageSize">
+
+    <ToolBarContent>
+        <MudStack Row=true AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudText Typo="Typo.h6">日志</MudText>
+        </MudStack>
+    </ToolBarContent>
+
+    <Columns>
+        <PropertyColumn T="LogEntry" TProperty="DateTime" Property="@(x => x.Time)" Title="时间">
+            <CellTemplate Context="ctx">
+                <MudText Class="text-nowrap">@ctx.Item.Time</MudText>
+            </CellTemplate>
+            <FilterTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.FilterAlt" Size="Size.Small" Color="Color.Default"
+                    OnClick="@(() => _timeFilterOpen = !_timeFilterOpen)" />
+                <MudPopover Open="@_timeFilterOpen" AnchorOrigin="Origin.BottomCenter"
+                    TransformOrigin="Origin.TopCenter">
+                    <MudDatePicker Date="@SelectedDate"
+                        DateChanged="@((DateTime? v) => OnSelectedDateChangedAsync(v, context))" />
+                </MudPopover>
+            </FilterTemplate>
+        </PropertyColumn>
+
+        <PropertyColumn T="LogEntry" TProperty="LogMessageType" Property="@(x => x.Type)" Title="消息类型">
+            <CellTemplate Context="ctx">
+                <MudChip Color="@TypeColor(ctx.Item.Type)" Variant="Variant.Outlined" Icon="@TypeIcon(ctx.Item.Type)">
+                    @ctx.Item.Type</MudChip>
+            </CellTemplate>
+            <FilterTemplate>
+                <FilterChipList TItem="LogMessageType" Options="@TypeOptions" Selected="@SelectedTypes"
+                    ToLabel="@(t => t.ToString())"
+                    Apply="@((HashSet<LogMessageType> s) => ApplyTypeFilter(s, context))" />
+            </FilterTemplate>
+        </PropertyColumn>
+
+        <PropertyColumn T="LogEntry" TProperty="string" Property="@(x => x.Line)" Title="产线">
+            <CellTemplate Context="ctx">
+                <MudText Class="text-nowrap">@ctx.Item.Line</MudText>
+            </CellTemplate>
+            <FilterTemplate>
+                <FilterChipList TItem="string" Options="@LineOptions" Selected="@SelectedLines" ToLabel="@(l => l)"
+                    Apply="@((HashSet<string> s) => ApplyLineFilter(s, context))" />
+            </FilterTemplate>
+        </PropertyColumn>
+
+        <PropertyColumn T="LogEntry" TProperty="string" Property="@(x => x.ObjectType)" Title="对象类型">
+            <FilterTemplate>
+                <FilterChipList TItem="string" Options="@ObjectTypeOptions" Selected="@SelectedObjectTypes"
+                    ToLabel="@(l => l)" Apply="@((HashSet<string> s) => ApplyObjectTypeFilter(s, context))" />
+            </FilterTemplate>
+        </PropertyColumn>
+
+        <PropertyColumn T="LogEntry" TProperty="string" Property="@(x => x.Object)" Title="对象">
+            <CellTemplate Context="ctx">
+                <MudText Class="text-nowrap">@ctx.Item.Object</MudText>
+            </CellTemplate>
+            <FilterTemplate>
+                <FilterChipList TItem="string" Options="@ObjectOptions" Selected="@SelectedObjects" ToLabel="@(o => o)"
+                    Apply="@((HashSet<string> s) => ApplyObjectFilter(s, context))" />
+            </FilterTemplate>
+        </PropertyColumn>
+
+        <PropertyColumn Property="x => x.Content" Title="消息" />
+
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="LogEntry" PageSizeOptions="@PageSizeOptions" />
+    </PagerContent>
+</MudDataGrid>

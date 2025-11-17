@@ -1,0 +1,109 @@
+@page "/rabbit-rx-demo"
+@using System.Reactive.Linq
+@using System.Reactive.Disposables
+@using System.Text.Json
+@using MudBlazorLab.Components.Models
+@using MudBlazorLab.Components.Components.InspectionPanel
+@using MudBlazorLab.Web.Services
+@using Serilog
+@inject IRabbitMQMessageService MessageService
+@inject ISnackbar Snackbar
+
+<PageTitle>RabbitMQ Rx Demo</PageTitle>
+
+<LogTable Source="@_entries" Height="70vh" PageSize="20" />
+
+@code {
+    private List<LogEntry> _entries = new();
+    private IDisposable? _subscription;
+
+    protected override void OnInitialized()
+    {
+        StartSubscription();
+    }
+
+    private void StartSubscription()
+    {
+        try
+        {
+            _subscription = MessageService.Buffered
+            .ObserveOn(SynchronizationContext.Current!)
+            .Subscribe(list =>
+            {
+                _entries = list.Select(ToLogEntry).ToList();
+                StateHasChanged();
+            }, OnError, OnCompleted);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"连接失败: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void StopSubscription()
+    {
+        _subscription?.Dispose();
+        _subscription = null;
+    }
+
+    private void ToggleSubscription() { }
+
+    private void OnMessageReceived(QueenInfoMessage message) { }
+
+    private void OnError(Exception error)
+    {
+        Snackbar.Add($"消息流错误: {error.Message}", Severity.Error);
+        Log.Information($"RabbitMQ 消息流错误: {error}");
+    }
+
+    private void OnCompleted()
+    {
+        Snackbar.Add("消息流已关闭", Severity.Info);
+    }
+
+    private void ClearMessages()
+    {
+        _entries.Clear();
+        StateHasChanged();
+        Snackbar.Add("消息列表已清空", Severity.Info);
+    }
+
+    private LogEntry ToLogEntry(QueenInfoMessage message)
+    {
+        var type = LogMessageType.Info;
+        var rn = $"{message.ObjectType}/{message.ObjectName}".Trim('/');
+        var tn = message.InfoType ?? "";
+        var content = FormatMessageContent(message);
+        var indicator = (message.InfoType ?? content ?? "").ToLowerInvariant();
+        if (indicator.Contains("error")) type = LogMessageType.Error;
+        else if (indicator.Contains("warn")) type = LogMessageType.Alarm;
+        else type = LogMessageType.Info;
+        return new LogEntry
+        {
+            Time = DateTime.Now,
+            Type = type,
+            Line = message.ObjectType ?? "",
+            Object = string.IsNullOrWhiteSpace(rn) ? tn : rn,
+            Content = content
+        };
+    }
+
+    private string FormatMessageContent(QueenInfoMessage message)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(message.Content)) return message.Content;
+            var json = JsonSerializer.Serialize(message, new JsonSerializerOptions { WriteIndented = false, MaxDepth = 3 });
+            return json;
+        }
+        catch
+        {
+            return "无法序列化消息内容";
+        }
+    }
+
+    public void Dispose()
+    {
+        _subscription?.Dispose();
+    }
+}

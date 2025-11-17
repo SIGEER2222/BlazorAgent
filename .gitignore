@@ -40,3 +40,5 @@ src/**/App_Data/*.db
 src/**/App_Data/*.sqlite
 *.xlsx
 **/TestResults/**
+others/**
+

@@ -5,24 +5,28 @@
 
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-    <MudNavLink Href="autogrid-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TableChart">AutoGrid Demo</MudNavLink>
-
-    <MudNavLink Href="linked-autogrid-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TableChart">
-        Link AutoGrid Demo
+    <MudNavLink Href="autogrid-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TableChart">AutoGrid Demo
     </MudNavLink>
 
     <MudNavLink Href="three-level-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DeviceHub">
         Three Level Demo
     </MudNavLink>
 
-    <FeatureGuard Feature="IncomingInspection">
-        <MudNavLink Href="incoming-inspection" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory">来料检验</MudNavLink>
-    </FeatureGuard>
+    <MudNavLink Href="rabbit-rx-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MarkUnreadChatAlt">
+        log-demo
+    </MudNavLink>
+
+    <MudNavLink Href="incoming-inspection" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">
+        来料检验
+    </MudNavLink>
+
     <FeatureGuard Feature="ProcessInspection">
-        <MudNavLink Href="process-shipping-inspection" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assignment">过程检验 & 出货检查</MudNavLink>
+        <MudNavLink Href="process-shipping-inspection" Match="NavLinkMatch.Prefix"
+            Icon="@Icons.Material.Filled.Assignment">过程检验 & 出货检查</MudNavLink>
     </FeatureGuard>
     <FeatureGuard Feature="ShiftInspection">
-        <MudNavLink Href="shift-random-inspection" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FactCheck">开班点检 & 随机点检</MudNavLink>
+        <MudNavLink Href="shift-random-inspection" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FactCheck">
+            开班点检 & 随机点检</MudNavLink>
     </FeatureGuard>
 
     <AuthorizeView>

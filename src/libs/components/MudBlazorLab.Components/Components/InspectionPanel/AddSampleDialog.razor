@@ -1,0 +1,126 @@
+@using Bogus
+@using MudBlazor
+@using MudBlazorLab.Components.Models
+
+<MudStack Spacing="2">
+  <MudText Typo="Typo.body1">生成样本数：@_sampleCount（依据对象总量与抽样率）</MudText>
+  <MudGrid>
+    @for (int i = 0; i < _samples.Count; i++)
+    {
+      var idx = i;
+      var sample = _samples[idx];
+      <MudItem xs="12" sm="6" md="6">
+        <MudPaper Class="pa-3">
+          <MudText Typo="Typo.subtitle1">样本 @(idx + 1)</MudText>
+          <MudTextField T="string" Label="样本SN" @bind-Value="sample.Sn" />
+          <MudTable Items="sample.Items" Dense="true" Bordered="true">
+            <HeaderContent>
+              <MudTh>检查项</MudTh>
+              <MudTh>单位</MudTh>
+              <MudTh>数值</MudTh>
+              <MudTh>结果</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+              <MudTd DataLabel="检查项">@context.Name</MudTd>
+              <MudTd DataLabel="单位">@context.Unit</MudTd>
+              <MudTd DataLabel="数值">
+                <MudNumericField T="double" @bind-Value="context.Value" Immediate="true" />
+              </MudTd>
+              <MudTd DataLabel="结果">
+                <MudSelect T="string" @bind-Value="context.Result">
+                  <MudSelectItem Value="@("OK")">OK</MudSelectItem>
+                  <MudSelectItem Value="@("NG")">NG</MudSelectItem>
+                </MudSelect>
+              </MudTd>
+            </RowTemplate>
+          </MudTable>
+        </MudPaper>
+      </MudItem>
+    }
+  </MudGrid>
+  <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="1">
+    <MudButton Variant="Variant.Text" OnClick="Cancel">取消</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Ok">确定</MudButton>
+  </MudStack>
+</MudStack>
+
+@code {
+  [Parameter] public InspectionTemplate? Template { get; set; }
+  [Parameter] public ObjectRow? Target { get; set; }
+  [Parameter] public EventCallback OnCancel { get; set; }
+  [Parameter] public EventCallback<List<SnRow>> OnSubmit { get; set; }
+
+  int _sampleCount = 1;
+  List<SampleEntry> _samples = new();
+
+  protected override void OnInitialized()
+  {
+    var faker = new Faker("zh_CN");
+    _sampleCount = ComputeSampleCount(Target);
+    for (int i = 0; i < _sampleCount; i++)
+    {
+      var se = new SampleEntry { Sn = faker.Random.Replace("SN-####") };
+      if (Template != null)
+      {
+        foreach (var it in Template.Items)
+        {
+          var unit = it.Kind == "weight" ? "g" : "cm";
+          se.Items.Add(new ItemValue
+          {
+            Name = it.Name,
+            Unit = unit,
+            Value = Math.Round(faker.Random.Double(0.001, 10.0), 3),
+            Result = "OK"
+          });
+        }
+      }
+      _samples.Add(se);
+    }
+  }
+
+  async Task Cancel() { await OnCancel.InvokeAsync(); }
+  async Task Ok()
+  {
+    var rows = new List<SnRow>();
+    foreach (var se in _samples)
+    {
+      var sn = se.Sn ?? string.Empty;
+      foreach (var it in se.Items)
+      {
+        rows.Add(new SnRow { Sn = sn, Item = it.Name, Unit = it.Unit, Value = it.Value, Result = it.Result });
+      }
+    }
+    await OnSubmit.InvokeAsync(rows);
+  }
+
+  int ComputeSampleCount(ObjectRow? obj)
+  {
+    if (obj == null) return 1;
+    var total = Math.Max(obj.Total, 1);
+    var rateText = obj.SampleRateText?.Trim() ?? "";
+    if (rateText.EndsWith("%"))
+    {
+      var num = rateText.Substring(0, rateText.Length - 1);
+      if (double.TryParse(num, out var r))
+      {
+        var count = (int)Math.Round(r * total / 100.0);
+        return Math.Max(count, 1);
+      }
+    }
+    return 1;
+  }
+
+  class ItemValue
+  {
+    public string Name { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
+    public double Value { get; set; }
+    public string Result { get; set; } = "OK";
+  }
+
+  class SampleEntry
+  {
+    public string? Sn { get; set; }
+    public List<ItemValue> Items { get; set; } = new();
+  }
+}

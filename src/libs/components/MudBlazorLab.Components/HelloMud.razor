@@ -1,7 +1,40 @@
 @using MudBlazor
-<MudText Typo="Typo.h6">计数：@count</MudText>
-<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Inc">增加</MudButton>
+@using MudBlazorLab.Components.Models
+@using MudBlazorLab.Components.Components
+@using MudBlazorLab.Components.Components.InspectionPanel
+
+<MudStack Spacing="2">
+  <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+    <MudText Typo="Typo.h6">日志示例</MudText>
+    <MudNumericField @bind-Value="count" Min="1" Max="10000" Label="数量" Variant="Variant.Outlined" Dense="true" />
+    <MudSelect T="int" @bind-Value="pageSize" Dense="true" Label="每页行数">
+      <MudSelectItem Value="10">10</MudSelectItem>
+      <MudSelectItem Value="20">20</MudSelectItem>
+      <MudSelectItem Value="50">50</MudSelectItem>
+      <MudSelectItem Value="100">100</MudSelectItem>
+    </MudSelect>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Generate">生成</MudButton>
+  </MudStack>
+
+  <LogTable Source="@logs" PageSize="@pageSize" Height="70vh" />
+</MudStack>
+
 @code {
-  int count;
-  void Inc() { count++; }
+  int count = 200;
+  int pageSize = 20;
+  List<LogEntry> logs = new();
+
+  void Generate() {
+    var lines = new[] { "Line-A", "Line-B", "Line-C", "Line-D" };
+    var objects = new[] { "Station-1", "Station-2", "Robot-7", "Camera-3", "PLC-5" };
+    var rnd = new Bogus.Randomizer();
+    var faker = new Bogus.Faker<LogEntry>(locale: "zh_CN")
+      .RuleFor(x => x.Time, f => f.Date.RecentOffset(7).DateTime)
+      .RuleFor(x => x.Type, f => f.PickRandom<LogMessageType>())
+      .RuleFor(x => x.Line, f => f.PickRandom(lines))
+      .RuleFor(x => x.Object, f => f.PickRandom(objects))
+      .RuleFor(x => x.Content, f => f.Lorem.Sentences(rnd.Int(1, 4)));
+
+    logs = faker.Generate(count);
+  }
 }

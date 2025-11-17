@@ -1,0 +1,71 @@
+{
+  "FabId": "CIMC",
+  "Env": "FCF",
+  "AppName": "IQUEEN",
+  "HostConfiguration": {
+    "HostName": "localhost",
+    "Port": 5672,
+    "UserName": "momadmin",
+    "Password": "momadmin",
+    "VirtualHost": "/",
+    "PrefetchCount": 1,
+    "AutomaticRecoveryEnabled": true
+  },
+  "Role": {
+    "Producer": {},
+    "Consumer": {
+      "NodeList": [
+        "PUBL.IQUEEN.PUBLIC"
+      ],
+      "ReceiveCount": 2
+    }
+  },
+  "RabbitMQCommunication": {
+    "PublishNode": {
+      "PUBL.IQUEEN.PUBLIC": {
+        "Source": "PUBLIC",
+        "Destination": "IQUEEN",
+        "DesignatedObject": false,
+        "ExchangeType": "Topic",
+        "ExchangeName": "IQUEEN.Topic",
+        "TimeOut": -1,
+        "QueueList": [
+          {
+            "QueueName": "{FabId}.{Env}.{NodeName}.*.{UniqueCode}",
+            "Arguments": {}
+          }
+        ]
+      }
+    },
+    "RequestNode": {
+      "RQST.EAP.MES": {
+        "Source": "MES",
+        "Destination": "EAP",
+        "DesignatedObject": true,
+        "ExchangeType": "Topic",
+        "ExchangeName": "EAP.Topic",
+        "TimeOut": 30000,
+        "QueueList": [
+          {
+            "QueueName": "{FabId}.{Env}.{NodeName}.*",
+            "Arguments": {}
+          }
+        ]
+      },
+      "RQST.MES.EAP": {
+        "Source": "EAP",
+        "Destination": "MES",
+        "DesignatedObject": true,
+        "ExchangeType": "Topic",
+        "ExchangeName": "MES.Topic",
+        "TimeOut": 30000,
+        "QueueList": [
+          {
+            "QueueName": "{FabId}.{Env}.{NodeName}.*",
+            "Arguments": {}
+          }
+        ]
+      }
+    }
+  }
+}
