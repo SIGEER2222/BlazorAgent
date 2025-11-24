@@ -15,7 +15,7 @@ public class StocktakingService
         var q = _db.StockCounts;
         if (!string.IsNullOrWhiteSpace(keyword)) q = q.Where(p => p.Code.Contains(keyword));
         int total = 0;
-        var list = q.OrderBy(p => p.Id).ToPageList(page, pageSize, ref total);
+        var list = q.OrderBy(p => p.CreatedAt, SqlSugar.OrderByType.Desc).ToPageList(page, pageSize, ref total);
         return Task.FromResult(((IEnumerable<StockCount>)list, total));
     }
 

@@ -1,0 +1,15 @@
+@page "/three-level-demo"
+@using MudBlazorLab.Components.Components
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.h5">Three Level Demo</MudText>
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" >生成样例数据</MudButton>
+    </MudStack>
+    <ThreeLevelAddGrid @ref="_demo" />
+    <MudAlert Severity="Severity.Info">点击一级表任意行打开二级；点击二级表任意行打开三级。</MudAlert>
+</MudStack>
+
+@code {
+    MudBlazorLab.Components.Components.ThreeLevelAddGrid? _demo;
+}

@@ -1,0 +1,131 @@
+@using MudBlazor
+
+<MudStack Spacing="2">
+    <MudDataGrid T="FirstItem" Items="@_first" Bordered="true" Dense="true" Hover="true" FixedHeader="true" Height="70vh" RowsPerPage="10">
+        <ToolBarContent>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudText Typo="Typo.h6">一级数据</MudText>
+            </MudStack>
+        </ToolBarContent>
+        <Columns>
+            <PropertyColumn T="FirstItem" TProperty="int" Property="@(x => x.Id)" Title="ID" />
+            <PropertyColumn T="FirstItem" TProperty="string" Property="@(x => x.Name)" Title="名称" />
+            <TemplateColumn T="FirstItem" Title="操作">
+                <CellTemplate Context="ctx">
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" OnClick="@(() => OpenSecond(ctx.Item))">新增</MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="FirstItem" PageSizeOptions="new[] { 10, 20, 50 }" />
+        </PagerContent>
+    </MudDataGrid>
+</MudStack>
+
+<MudOverlay Visible="@_openSecond" DarkBackground="true" Class="d-flex align-center justify-center">
+    <MudPaper Elevation="24" Class="pa-4" Style="width:80vw; max-width:1200px; max-height:80vh; overflow:auto;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">二级数据：@(_selectedFirst?.Name)</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseSecond">关闭</MudButton>
+        </MudStack>
+        <MudDataGrid T="SecondItem" Items="@_secondFiltered" Bordered="true" Dense="true" Hover="true" FixedHeader="true" Height="65vh" RowsPerPage="10">
+            <ToolBarContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.h6">二级数据</MudText>
+                </MudStack>
+            </ToolBarContent>
+            <Columns>
+                <PropertyColumn T="SecondItem" TProperty="int" Property="@(x => x.Id)" Title="ID" />
+                <PropertyColumn T="SecondItem" TProperty="string" Property="@(x => x.Name)" Title="名称" />
+                <TemplateColumn T="SecondItem" Title="操作">
+                    <CellTemplate Context="ctx">
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" OnClick="@(() => OpenThird(ctx.Item))">新增</MudButton>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="SecondItem" PageSizeOptions="new[] { 10, 20, 50 }" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+    
+</MudOverlay>
+
+<MudOverlay Visible="@_openThird" DarkBackground="true" Class="d-flex align-center justify-center">
+    <MudPaper Elevation="24" Class="pa-4" Style="width:70vw; max-width:1000px; max-height:75vh; overflow:auto;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">三级数据：@(_selectedSecond?.Name)</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseThird">关闭</MudButton>
+        </MudStack>
+        <MudDataGrid T="ThirdItem" Items="@_thirdFiltered" Bordered="true" Dense="true" Hover="true" FixedHeader="true" Height="60vh" RowsPerPage="10">
+            <ToolBarContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.h6">三级数据</MudText>
+                </MudStack>
+            </ToolBarContent>
+            <Columns>
+                <PropertyColumn T="ThirdItem" TProperty="int" Property="@(x => x.Id)" Title="ID" />
+                <PropertyColumn T="ThirdItem" TProperty="string" Property="@(x => x.Name)" Title="名称" />
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="ThirdItem" PageSizeOptions="new[] { 10, 20, 50 }" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+</MudOverlay>
+
+@code {
+    class FirstItem { public int Id { get; set; } public string Name { get; set; } = string.Empty; }
+    class SecondItem { public int Id { get; set; } public int FirstId { get; set; } public string Name { get; set; } = string.Empty; }
+    class ThirdItem { public int Id { get; set; } public int SecondId { get; set; } public string Name { get; set; } = string.Empty; }
+
+    List<FirstItem> _first = new();
+    List<SecondItem> _second = new();
+    List<ThirdItem> _third = new();
+
+    bool _openSecond;
+    bool _openThird;
+    FirstItem? _selectedFirst;
+    SecondItem? _selectedSecond;
+
+    IEnumerable<SecondItem> _secondFiltered => _selectedFirst is null ? Enumerable.Empty<SecondItem>() : _second.Where(x => x.FirstId == _selectedFirst.Id);
+    IEnumerable<ThirdItem> _thirdFiltered => _selectedSecond is null ? Enumerable.Empty<ThirdItem>() : _third.Where(x => x.SecondId == _selectedSecond.Id);
+
+    protected override void OnInitialized()
+    {
+        Seed();
+    }
+
+    void Seed()
+    {
+        _first = Enumerable.Range(1, 8).Select(i => new FirstItem { Id = i, Name = $"一级-{i}" }).ToList();
+        _second = Enumerable.Range(1, 24).Select(i => new SecondItem { Id = i, FirstId = ((i - 1) % 8) + 1, Name = $"二级-{i}" }).ToList();
+        _third = Enumerable.Range(1, 48).Select(i => new ThirdItem { Id = i, SecondId = ((i - 1) % 24) + 1, Name = $"三级-{i}" }).ToList();
+    }
+
+    void OpenSecond(FirstItem item)
+    {
+        _selectedFirst = item;
+        _openSecond = true;
+    }
+
+    void CloseSecond()
+    {
+        _openSecond = false;
+        _selectedFirst = null;
+    }
+
+    void OpenThird(SecondItem item)
+    {
+        _selectedSecond = item;
+        _openThird = true;
+    }
+
+    void CloseThird()
+    {
+        _openThird = false;
+        _selectedSecond = null;
+    }
+}

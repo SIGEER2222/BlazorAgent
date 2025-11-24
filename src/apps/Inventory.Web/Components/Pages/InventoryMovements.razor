@@ -50,7 +50,7 @@
         if (_start is DateTime s) q = q.Where(x => x.OccurredAt >= s);
         if (_end is DateTime e) q = q.Where(x => x.OccurredAt <= e);
         int total = 0;
-        var items = q.OrderBy(x => x.Id).ToPageList(page, pageSize, ref total);
+        var items = q.OrderBy(x => x.OccurredAt, SqlSugar.OrderByType.Desc).ToPageList(page, pageSize, ref total);
         var prods = Db.Db.Queryable<global::Inventory.Domain.Entities.Product>().Where(x=> items.Select(i=>i.ProductId).Contains(x.Id)).ToList();
         var whs = Db.Db.Queryable<global::Inventory.Domain.Entities.Warehouse>().Where(x=> items.Select(i=>i.WarehouseId).Contains(x.Id)).ToList();
         var vms = items.Select(i => new MovementVm {

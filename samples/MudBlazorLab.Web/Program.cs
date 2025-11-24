@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using MudBlazorLab.Web.Services;
+using InspectionSystem.Services;
+using InspectionSystem.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +21,14 @@ builder.Services.AddRazorComponents()
 builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<IPermissionService>(new PermissionService(PermissionRegistry.FeatureRoles));
+
+builder.Services.AddSingleton<IInspectionConfigService, InMemoryInspectionConfigService>();
+var dataDir = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
+if (!Directory.Exists(dataDir)) Directory.CreateDirectory(dataDir);
+var dbPath = Path.Combine(dataDir, "inspection.db");
+var conn = $"Data Source={dbPath}";
+builder.Services.AddSingleton(new InspectionDb(conn));
+builder.Services.AddSingleton<IInspectionDataService, InspectionDataService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options => {
@@ -39,7 +49,7 @@ builder.Services.AddSingleton<RabbitMQConsumerService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<RabbitMQConsumerService>());
 
 // Register RabbitMQ Message Service for UI components
-builder.Services.AddSingleton<IRabbitMQMessageService>(sp => 
+builder.Services.AddSingleton<IRabbitMQMessageService>(sp =>
     new RabbitMQMessageService(sp.GetRequiredService<RabbitMQConsumerService>()));
 
 var app = builder.Build();

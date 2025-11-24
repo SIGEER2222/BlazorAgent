@@ -1,0 +1,72 @@
+@page "/filterable-multiselect-demo"
+@using MudBlazorLab.Components.Components
+@using MudBlazorLab.Components.Models
+@using MudBlazor
+
+<PageTitle>FilterableMultiSelect 演示</PageTitle>
+
+<MudStack Spacing="2">
+    <MudAlert Severity="Severity.Info">演示可筛选多选下拉：支持字符串与对象列表。</MudAlert>
+
+    <MudPaper Class="pa-4" Elevation="2">
+        <MudText Typo="Typo.h6">字符串示例</MudText>
+        <FilterableMultiSelect TItem="string"
+                               Items="@_fruits"
+                               @bind-SelectedValues="_selectedFruits"
+                               Label="水果"
+                               Placeholder="选择水果"
+                               Dense="true"
+                               Clearable="true"
+                               DisableUnderlines="true" />
+        <MudDivider Class="my-2" />
+        <MudText Typo="Typo.subtitle2">已选择：@string.Join(", ", _selectedFruits)</MudText>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="2">
+        <MudText Typo="Typo.h6">对象示例</MudText>
+        <FilterableMultiSelect TItem="InventoryItem"
+                               Items="@_items"
+                               ItemLabel="@(i => i.Name)"
+                               FilterFunc="@FilterItem"
+                               @bind-SelectedValues="_selectedItems"
+                               Label="库存项目"
+                               Placeholder="选择项目"
+                               Dense="true"
+                               Clearable="true"
+                               DisableUnderlines="true" />
+        <MudDivider Class="my-2" />
+        <MudText Typo="Typo.subtitle2">共选择 @(_selectedItems.Count()) 项</MudText>
+        <MudList T="InventoryItem" Dense="true">
+            @foreach (var it in _selectedItems)
+            {
+                <MudListItem T="InventoryItem">@it.Name (@it.Category)</MudListItem>
+            }
+        </MudList>
+    </MudPaper>
+</MudStack>
+
+@code {
+    string[] _fruits = new[] { "苹果", "香蕉", "葡萄", "橙子", "西瓜", "菠萝", "芒果" };
+    IEnumerable<string> _selectedFruits = Array.Empty<string>();
+
+    List<InventoryItem> _items = new();
+    IEnumerable<InventoryItem> _selectedItems = Enumerable.Empty<InventoryItem>();
+
+    protected override void OnInitialized()
+    {
+        _items = new List<InventoryItem>
+        {
+            new() { Name = "A100", Quantity = 12, Price = 19.99m, WeightKg = 0.45, Active = true, ManufactureDate = DateTime.Today.AddDays(-7), ExpiryDate = DateTime.Today.AddMonths(6), Category = InventoryCategory.Perishable },
+            new() { Name = "B200", Quantity = 5, Price = 99.00m, WeightKg = 2.3, Active = false, ManufactureDate = DateTime.Today.AddDays(-30), Category = InventoryCategory.Valuable },
+            new() { Name = "C300", Quantity = 100, Price = 1.99m, WeightKg = 0.05, Active = true, ManufactureDate = DateTime.Today.AddDays(-1), Category = InventoryCategory.General },
+            new() { Name = "D400", Quantity = 0, Price = 299.50m, WeightKg = 5.8, Active = false, ManufactureDate = DateTime.Today.AddDays(-120), ExpiryDate = DateTime.Today.AddMonths(1), Category = InventoryCategory.Hazardous },
+        };
+    }
+
+    bool FilterItem(InventoryItem item, string text)
+    {
+        var key = text ?? string.Empty;
+        return (item.Name?.Contains(key, StringComparison.OrdinalIgnoreCase) ?? false)
+               || item.Category.ToString().Contains(key, StringComparison.OrdinalIgnoreCase);
+    }
+}

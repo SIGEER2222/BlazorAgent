@@ -1,0 +1,24 @@
+@page "/grid-datagrid-select-demo"
+@using MudBlazor
+@using MudBlazorLab.Components.Components
+
+<MudStack Spacing="2">
+  <MudText Typo="Typo.h6">GridDataGridSelect Demo</MudText>
+
+  <GridDataGridSelect TItem="Person" Items="@People" @bind-SelectedItems="Selected" DisplayTextSelector="@(p => p.Name)" Label="人员">
+    <ColumnsTemplate>
+      <PropertyColumn T="Person" TProperty="int" Property="@(x => x.Id)" Title="ID" />
+      <PropertyColumn T="Person" TProperty="string" Property="@(x => x.Name)" Title="姓名" />
+      <PropertyColumn T="Person" TProperty="int" Property="@(x => x.Age)" Title="年龄" />
+    </ColumnsTemplate>
+  </GridDataGridSelect>
+
+  <MudText Typo="Typo.body2">已选：@string.Join(", ", Selected.Select(x=>x.Name))</MudText>
+</MudStack>
+
+@code {
+  public class Person { public int Id { get; set; } public string Name { get; set; } = string.Empty; public int Age { get; set; } }
+
+  List<Person> People = Enumerable.Range(1, 15).Select(i => new Person { Id = i, Name = $"人员-{i}", Age = 18 + (i % 10) }).ToList();
+  HashSet<Person> Selected = new();
+}

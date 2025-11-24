@@ -14,12 +14,14 @@
   <ItemGroup>
     <PackageReference Include="MudBlazor" Version="8.*" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.11" />
+    <PackageReference Include="System.Reactive" Version="6.*" />
     <PackageReference Include="Serilog.AspNetCore" Version="*" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="*" />
     <PackageReference Include="Serilog.Sinks.Console" Version="*" />
     <PackageReference Include="Serilog.Sinks.File" Version="*" />
     <PackageReference Include="Bogus" Version="35.*" />
     <PackageReference Include="RabbitMQ.Client" Version="6.*" />
+    <PackageReference Include="SqlSugarCore" Version="5.*" />
   </ItemGroup>
 
   <ItemGroup>

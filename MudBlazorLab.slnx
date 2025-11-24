@@ -4,6 +4,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/src/" />
   <Folder Name="/src/apps/">
     <Project Path="src/apps/Inventory.Web/Inventory.Web.csproj" />
     <Project Path="src/apps/Factory.Web/Factory.Web.csproj" />
@@ -12,6 +13,7 @@
     <Project Path="src/libs/Inventory/Inventory.Domain/Inventory.Domain.csproj" />
     <Project Path="src/libs/Inventory/Inventory.Infrastructure/Inventory.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/libs/" />
   <Folder Name="/src/libs/components/">
     <Project Path="src/libs/components/MudBlazorLab.Components/MudBlazorLab.Components.csproj" />
     <Project Path="src/libs/components/Factory.Components/Factory.Components.csproj" />
@@ -24,6 +26,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/MudBlazorLab.Web/MudBlazorLab.Web.csproj" Id="f22376ad-d0ef-4931-a8b4-53e8b7f377af" />
   </Folder>
+  <Folder Name="/tests/" />
   <Folder Name="/tests/Inventory/">
     <Project Path="tests/Inventory.ComponentTests/Inventory.ComponentTests.csproj" />
     <Project Path="tests/Inventory.E2E/Inventory.E2E.csproj" />

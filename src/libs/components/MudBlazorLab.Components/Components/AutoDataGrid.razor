@@ -1,0 +1,34 @@
+@typeparam TItem
+
+@using MudBlazor
+
+<MudDataGrid T="TItem" Items="@Source" ServerData="@ServerData" Bordered="true" Dense="true" Hover="true" Filterable="@Filterable"
+    FixedHeader="true" Height="@Height" AutoGenerateColumns="true" ColumnResizeMode="ResizeMode.Container" RowsPerPage="@RowsPerPage" @ref="_grid" RowClick="@RowClick">
+    <ToolBarContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">@Title</MudText>
+            <MudSpacer />
+            @Toolbar
+        </MudStack>
+    </ToolBarContent>
+    
+    <PagerContent>
+        <MudDataGridPager T="TItem" PageSizeOptions="@PageSizeOptions" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public IEnumerable<TItem>? Source { get; set; }
+    [Parameter] public Func<GridState<TItem>, Task<GridData<TItem>>>? ServerData { get; set; }
+    [Parameter] public RenderFragment? Toolbar { get; set; }
+    [Parameter] public RenderFragment<TItem>? RowActions { get; set; }
+    [Parameter] public string Height { get; set; } = "70vh";
+    [Parameter] public bool Filterable { get; set; } = false;
+    [Parameter] public int[] PageSizeOptions { get; set; } = new[] { 10, 20, 50 };
+    [Parameter] public int RowsPerPage { get; set; } = 20;
+    [Parameter] public EventCallback<DataGridRowClickEventArgs<TItem>> RowClick { get; set; }
+
+    MudDataGrid<TItem>? _grid;
+    public void Reload() { _grid?.ReloadServerData(); }
+}

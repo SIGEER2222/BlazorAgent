@@ -16,7 +16,7 @@ namespace Inventory.Web.Endpoints;
         if (p != null) q = q.Where(x => x.ProductId == p.Id); else q = q.Where(x => false);
       }
       int total = 0;
-      var items = q.OrderBy(x => x.Id).ToPageList(page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize, ref total);
+      var items = q.OrderBy(x => x.Id, SqlSugar.OrderByType.Desc).ToPageList(page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize, ref total);
       return Results.Ok(new { items, total });
     }).RequireAuthorization();
 
@@ -32,7 +32,7 @@ namespace Inventory.Web.Endpoints;
       if (start is DateTime s) q = q.Where(x => x.OccurredAt >= s);
       if (end is DateTime e) q = q.Where(x => x.OccurredAt <= e);
       int total = 0;
-      var items = q.OrderBy(x => x.Id).ToPageList(page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize, ref total);
+      var items = q.OrderBy(x => x.OccurredAt, SqlSugar.OrderByType.Desc).ToPageList(page <= 0 ? 1 : page, pageSize <= 0 ? 20 : pageSize, ref total);
       return Results.Ok(new { items, total });
     }).RequireAuthorization();
 
@@ -115,7 +115,7 @@ namespace Inventory.Web.Endpoints;
         var p = db.Db.Queryable<Inventory.Domain.Entities.Product>().First(x => x.Code == productCode);
         if (p != null) q = q.Where(x => x.ProductId == p.Id); else q = q.Where(x => false);
       }
-      var data = q.OrderBy(x => x.Id).ToList();
+      var data = q.OrderBy(x => x.Id, SqlSugar.OrderByType.Desc).ToList();
       MiniExcel.SaveAs(ms, data);
       ms.Position = 0;
       return Results.File(ms.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "inventory-balance.xlsx");
@@ -133,7 +133,7 @@ namespace Inventory.Web.Endpoints;
       }
       if (start is DateTime s) q = q.Where(x => x.OccurredAt >= s);
       if (end is DateTime e) q = q.Where(x => x.OccurredAt <= e);
-      var data = q.OrderBy(x => x.Id).ToList();
+      var data = q.OrderBy(x => x.OccurredAt, SqlSugar.OrderByType.Desc).ToList();
       MiniExcel.SaveAs(ms, data);
       ms.Position = 0;
       return Results.File(ms.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "inventory-movements.xlsx");

@@ -1,0 +1,86 @@
+@using MudBlazor
+
+<MudStack Spacing="2">
+    <AutoDataGrid TItem="FirstItem" Title="一级数据" Source="@_first" Filterable="false" RowsPerPage="10" RowClick="OnFirstRowClick" />
+</MudStack>
+
+<MudOverlay Visible="@_openSecond" DarkBackground="true" Class="d-flex align-center justify-center">
+    <MudPaper Elevation="24" Class="pa-4" Style="width:80vw; max-width:1200px; max-height:80vh; overflow:auto;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">二级数据：@(_selectedFirst?.Name)</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseSecond">关闭</MudButton>
+        </MudStack>
+        <AutoDataGrid TItem="SecondItem" Title="二级数据" Source="@_secondFiltered" Filterable="false" RowsPerPage="10" RowClick="OnSecondRowClick" />
+    </MudPaper>
+</MudOverlay>
+
+<MudOverlay Visible="@_openThird" DarkBackground="true" Class="d-flex align-center justify-center">
+    <MudPaper Elevation="24" Class="pa-4" Style="width:70vw; max-width:1000px; max-height:75vh; overflow:auto;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">三级数据：@(_selectedSecond?.Name)</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseThird">关闭</MudButton>
+        </MudStack>
+        <AutoDataGrid TItem="ThirdItem" Title="三级数据" Source="@_thirdFiltered" Filterable="false" RowsPerPage="10" />
+    </MudPaper>
+</MudOverlay>
+
+@code {
+    class FirstItem { public int Id { get; set; } public string Name { get; set; } = string.Empty; }
+    class SecondItem { public int Id { get; set; } public int FirstId { get; set; } public string Name { get; set; } = string.Empty; }
+    class ThirdItem { public int Id { get; set; } public int SecondId { get; set; } public string Name { get; set; } = string.Empty; }
+
+    List<FirstItem> _first = new();
+    List<SecondItem> _second = new();
+    List<ThirdItem> _third = new();
+
+    bool _openSecond;
+    bool _openThird;
+    FirstItem? _selectedFirst;
+    SecondItem? _selectedSecond;
+
+    IEnumerable<SecondItem> _secondFiltered => _selectedFirst is null ? Enumerable.Empty<SecondItem>() : _second.Where(x => x.FirstId == _selectedFirst.Id);
+    IEnumerable<ThirdItem> _thirdFiltered => _selectedSecond is null ? Enumerable.Empty<ThirdItem>() : _third.Where(x => x.SecondId == _selectedSecond.Id);
+
+    protected override void OnInitialized()
+    {
+        Seed();
+    }
+
+    public void Seed()
+    {
+        _first = Enumerable.Range(1, 8).Select(i => new FirstItem { Id = i, Name = $"一级-{i}" }).ToList();
+        _second = Enumerable.Range(1, 24).Select(i => new SecondItem { Id = i, FirstId = ((i - 1) % 8) + 1, Name = $"二级-{i}" }).ToList();
+        _third = Enumerable.Range(1, 48).Select(i => new ThirdItem { Id = i, SecondId = ((i - 1) % 24) + 1, Name = $"三级-{i}" }).ToList();
+        StateHasChanged();
+    }
+
+    void OnFirstRowClick(DataGridRowClickEventArgs<FirstItem> args)
+    {
+        _selectedFirst = args.Item;
+        _openSecond = true;
+        StateHasChanged();
+    }
+
+    void CloseSecond()
+    {
+        _openSecond = false;
+        _selectedFirst = null;
+        StateHasChanged();
+    }
+
+    void OnSecondRowClick(DataGridRowClickEventArgs<SecondItem> args)
+    {
+        _selectedSecond = args.Item;
+        _openThird = true;
+        StateHasChanged();
+    }
+
+    void CloseThird()
+    {
+        _openThird = false;
+        _selectedSecond = null;
+        StateHasChanged();
+    }
+}

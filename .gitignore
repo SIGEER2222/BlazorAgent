@@ -42,3 +42,5 @@ src/**/App_Data/*.sqlite
 **/TestResults/**
 others/**
 
+nuget/**
+

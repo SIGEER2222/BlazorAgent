@@ -1,0 +1,40 @@
+@typeparam TItem
+
+<MudSelect T="TItem" SelectedValues="@SelectedValuesInternal" SelectedValuesChanged="@OnSelectedValuesChanged" MultiSelection="true" Label="@Label" Placeholder="@Placeholder" Dense="@Dense" Clearable="@Clearable" DisableUnderlines="@DisableUnderlines" Search="true" SearchIcon="@Icons.Material.Filled.Search" SearchFunc="@SearchFuncInternal">
+    @foreach (var item in Items)
+    {
+        <MudSelectItem T="TItem" Value="@item">@ItemLabel(item)</MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter] public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
+    [Parameter] public Func<TItem, string> ItemLabel { get; set; } = (x) => x?.ToString() ?? string.Empty;
+    [Parameter] public IEnumerable<TItem> SelectedValues { get; set; } = Enumerable.Empty<TItem>();
+    [Parameter] public EventCallback<IEnumerable<TItem>> SelectedValuesChanged { get; set; }
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Placeholder { get; set; } = string.Empty;
+    [Parameter] public string SearchPlaceholder { get; set; } = "筛选...";
+    [Parameter] public bool Dense { get; set; } = true;
+    [Parameter] public bool Clearable { get; set; } = true;
+    [Parameter] public bool DisableUnderlines { get; set; } = true;
+    [Parameter] public Func<TItem, string, bool>? FilterFunc { get; set; }
+
+    string _search = string.Empty;
+
+    HashSet<TItem> SelectedValuesInternal => SelectedValues is HashSet<TItem> hs ? hs : SelectedValues.ToHashSet();
+
+    void OnSelectedValuesChanged(IEnumerable<TItem> values)
+    {
+        SelectedValues = values;
+        SelectedValuesChanged.InvokeAsync(values);
+    }
+
+    bool SearchFuncInternal(TItem item, string text)
+    {
+        var keyword = text ?? string.Empty;
+        if (FilterFunc != null)
+            return FilterFunc(item, keyword);
+        return (ItemLabel(item) ?? string.Empty).Contains(keyword, StringComparison.OrdinalIgnoreCase);
+    }
+}

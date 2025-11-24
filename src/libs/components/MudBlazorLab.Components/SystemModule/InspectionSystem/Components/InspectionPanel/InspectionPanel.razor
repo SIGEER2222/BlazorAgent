@@ -1,0 +1,673 @@
+@using InspectionSystem.Data
+@using global::InspectionSystem.Models
+@using global::InspectionSystem.Services
+@using System.Reactive.Subjects
+@using System.Reactive.Linq
+@using System.Reactive.Disposables
+@implements IDisposable
+@namespace MudBlazorLab.Components.Components.InspectionPanel
+@using MudBlazor
+@inject InspectionSystem.Services.IInspectionConfigService ConfigSvc
+@inject InspectionSystem.Services.IInspectionDataService DataSvc
+
+<MudStack Spacing="2">
+    <MudPaper>
+        <MudDataGrid @ref="InspectionDocGrid" T="InspectionDoc" Items="@_docs" Bordered="true" Dense="true" Hover="true"
+            Filterable="true" FixedHeader="true" Height="80vh" RowsPerPage="@_pageSize" RowClick="OnDocRowClick"
+            SortMode="SortMode.Multiple">
+            <ToolBarContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.h6">表单</MudText>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewDoc"
+                        StartIcon="@Icons.Material.Filled.Add">新增表单</MudButton>
+                </MudStack>
+            </ToolBarContent>
+            <Columns>
+                <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.DocNumber)" Title="单号" />
+                <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.TemplateName)" Title="模板" />
+                <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.ProductionLineName)"
+                    Title="产线" />
+                <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.WorkOrderNumbers)" Title="工单" />
+                <PropertyColumn T="InspectionDoc" TProperty="InspectionStatus" Property="@(x => x.Status)" Title="状态">
+                    <CellTemplate Context="ctx">
+                        <MudChip Size="Size.Small" T="string" Color="@StatusColor(ctx.Item.Status)"
+                            Variant="Variant.Outlined">
+                            @ctx.Item.Status
+                        </MudChip>
+                    </CellTemplate>
+                </PropertyColumn>
+                <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.Creator)" Title="创建人" />
+                <PropertyColumn T="InspectionDoc" TProperty="DateTime" Property="@(x => x.CreatedAt)" Title="创建时间"
+                    Sortable="true" />
+                <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.DocNumber)" Title="操作">
+                    <CellTemplate Context="doc">
+                        <MudStack Row="true" Spacing="1">
+                            <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success"
+                                Size="Size.Small" Disabled="@(doc.Item.Status!=InspectionStatus.创建)"
+                                OnClick="@(()=>StartDoc(doc.Item))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Stop" Color="Color.Secondary" Size="Size.Small"
+                                Disabled="@(doc.Item.Status!=InspectionStatus.开始)" OnClick="@(()=>EndDoc(doc.Item))" />
+                        </MudStack>
+                    </CellTemplate>
+                </PropertyColumn>
+
+            </Columns>
+
+            <PagerContent>
+                <MudDataGridPager T="InspectionDoc" PageSizeOptions="@_pageOptions" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+</MudStack>
+
+<MudDialog Visible="_dlgDoc">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudAutocomplete T="string" @bind-Value="Form.Template" Label="模板" AriaLabel="模板" Placeholder="模板"
+                SearchFunc="SearchTemplates" CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+            <MudAutocomplete T="string" @bind-Value="Form.Line" Label="产线" AriaLabel="产线" Placeholder="产线"
+                SearchFunc="SearchLines" CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+
+            <GridDataGridSelect TItem="WorkOrderDto" Items="@_workOrderOptions" @bind-SelectedItems="Form.WorkOrders"
+                DisplayTextSelector="@(p => p.OrderNumber)" Label="工单">
+                <ColumnsTemplate>
+                    <PropertyColumn T="WorkOrderDto" TProperty="int" Property="@(x => x.Id)" Title="ID" />
+                    <PropertyColumn T="WorkOrderDto" TProperty="string" Property="@(x => x.OrderNumber)" Title="工单号" />
+                    <PropertyColumn T="WorkOrderDto" TProperty="string" Property="@(x => x.Description)" Title="描述" />
+                </ColumnsTemplate>
+            </GridDataGridSelect>
+
+            <MudTextField @bind-Value="Form.DocNumber" Label="单号" AriaLabel="单号" Placeholder="单号" Required="true" />
+            <MudAutocomplete T="string" @bind-Value="Form.Creator" Label="创建人" AriaLabel="创建人" Placeholder="创建人"
+                SearchFunc="SearchCreators" CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+            <MudDatePicker @bind-Date="Form.CreatedAt" Label="创建日期" />
+            <MudSwitch T="bool" @bind-Value="Form.AutoStartAndCreateObject" Color="Color.Primary" Label="立即开始" />
+            <input style="display:none" @bind="Form.Template" aria-label="模板" />
+            <input style="display:none" @bind="Form.Line" aria-label="产线" />
+            <input style="display:none" value="@string.Join(',', Form.WorkOrders)" aria-label="工单" />
+            <input style="display:none" @bind="Form.DocNumber" aria-label="单号" />
+            <input style="display:none" @bind="Form.Creator" aria-label="创建人" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => _dlgDoc = false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!_canSubmitDoc)" OnClick="SaveDoc">
+            确定
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog Visible="_dlgBulkAdd">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h6">批量添加详情项</MudText>
+            <MudText Typo="Typo.body2">对象：@(_currentObject?.ObjectName)</MudText>
+            <MudTable Items="@_bulkDtoForObject" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>检查项</MudTh>
+                    <MudTh>单位</MudTh>
+                    <MudTh>数值</MudTh>
+                    <MudTh>结果</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="row">
+                    <MudTd>@row.CheckItem</MudTd>
+                    <MudTd>@row.Unit</MudTd>
+                    <MudTd>
+                        <MudNumericField @bind-Value="row.NumericValue" Dense="true" Required="true" />
+                    </MudTd>
+                    <MudTd>
+                        <MudSelect T="InspectionResult" @bind-Value="row.Result" Dense="true">
+                            <MudSelectItem Value="InspectionResult.OK">OK</MudSelectItem>
+                            <MudSelectItem Value="InspectionResult.NG">NG</MudSelectItem>
+                        </MudSelect>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => _dlgBulkAdd = false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!CanSaveBulkAdd)"
+            OnClick="SaveBulkAddForObject">确定</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudOverlay Visible="@_openObjectsPanel" DarkBackground="true" Class="d-flex align-center justify-center">
+    <MudPaper Elevation="24" Class="pa-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">对象：@(_currentDoc?.DocNumber)</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                Disabled="@(_currentDoc==null || _currentDoc.Status!=InspectionStatus.开始)"
+                StartIcon="@Icons.Material.Filled.Add" OnClick="NewObject">新增对象</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseObjectsPanel">关闭</MudButton>
+        </MudStack>
+        <MudDataGrid @ref="InspectionObjectGrid" T="InspectionObject" Items="@_objects" Bordered="true" Dense="true"
+            Hover="true" Filterable="true" FixedHeader="true" Height="65vh" RowsPerPage="@_objPageSize"
+            RowClick="OnObjectRowClick" SortMode="SortMode.Multiple">
+            <Columns>
+                <PropertyColumn T="InspectionObject" TProperty="string" Property="@(x => x.DocNumber)" Title="单号" />
+                <PropertyColumn T="InspectionObject" TProperty="string" Property="@(x => x.TemplateName)" Title="模板" />
+                <TemplateColumn T="InspectionObject" Title="产线">
+                    <CellTemplate Context="obj">
+                        @_currentDoc?.ProductionLineName
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn T="InspectionObject" TProperty="string" Property="@(x => x.ObjectType)" Title="对象类型" />
+                <PropertyColumn T="InspectionObject" TProperty="string" Property="@(x => x.ObjectName)" Title="对象名称" />
+                <PropertyColumn T="InspectionObject" TProperty="InspectionResult?" Property="@(x => x.Result)"
+                    Title="结果" />
+                <PropertyColumn T="InspectionObject" TProperty="string" Property="@(x => x.Creator)" Title="创建人" />
+                <PropertyColumn T="InspectionObject" TProperty="DateTime" Property="@(x => x.CreatedAt)" Title="创建时间"
+                    Sortable="true" />
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="InspectionObject" PageSizeOptions="@_objPageOptions" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+</MudOverlay>
+
+<MudOverlay Visible="@_openDetailsPanel" DarkBackground="true" Class="d-flex align-center justify-center">
+    <MudPaper Elevation="24" Class="pa-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">详情：@(_currentObject?.ObjectName)</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                Disabled="@(_currentDoc==null || _currentDoc.Status!=InspectionStatus.开始 || _currentObject==null)"
+                StartIcon="@Icons.Material.Filled.AddTask" OnClick="NewDetail">新增详情项</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDetailsPanel">关闭</MudButton>
+        </MudStack>
+        <MudExpansionPanels Elevation="0">
+            <MudExpansionPanel Text="配置的详情项">
+                <MudList T="string" Dense="true">
+                    @foreach (var it in _configuredItems)
+                    {
+                        <MudListItem T="string">@it</MudListItem>
+                    }
+                </MudList>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+        <MudDataGrid @ref="InspectionDetailGrid" T="InspectionDetail" Items="@_details" Bordered="true" Dense="true"
+            Hover="true" Filterable="true" FixedHeader="true" Height="60vh" RowsPerPage="@_detailPageSize"
+            SortMode="SortMode.Multiple">
+            <Columns>
+                <PropertyColumn T="InspectionDetail" TProperty="string" Property="@(x => x.CheckObject)" Title="检查对象" />
+                <PropertyColumn T="InspectionDetail" TProperty="string" Property="@(x => x.CheckItem)" Title="检查项" />
+                <PropertyColumn T="InspectionDetail" TProperty="string" Property="@(x => x.CheckDescription)"
+                    Title="检查描述" />
+                <PropertyColumn T="InspectionDetail" TProperty="string" Property="@(x => x.Unit)" Title="单位" />
+                <PropertyColumn T="InspectionDetail" TProperty="decimal?" Property="@(x => x.NumericValue)"
+                    Title="数值" />
+                <PropertyColumn T="InspectionDetail" TProperty="InspectionResult" Property="@(x => x.Result)"
+                    Title="结果" />
+                <PropertyColumn T="InspectionDetail" TProperty="DateTime" Property="@(x => x.CreatedAt)" Title="创建时间"
+                    Sortable="true" />
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="InspectionDetail" PageSizeOptions="@_detailPageOptions" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+</MudOverlay>
+
+<MudDialog Visible="_dlgObject">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudAutocomplete T="string" @bind-Value="_objectType" Label="对象类型" Placeholder="对象类型"
+                SearchFunc="SearchObjectTypes" CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+            <MudTextField @bind-Value="_objectName" Label="对象名称" Placeholder="对象名称" Required="true" />
+            <MudTextField @bind-Value="_objectCreator" Label="创建人" Placeholder="创建人" Required="true" />
+            <MudDatePicker @bind-Date="_objectCreatedAt" Label="创建日期" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => _dlgObject = false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveObject">确定</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog Visible="_dlgDetail" Options="_dialogOptions">
+    <DialogContent>
+        <MudPaper Class="pa-2">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.h6">新增详情项</MudText>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                        OnClick="AddDetailRow">新增一行</MudButton>
+                </MudStack>
+
+                <MudTable Items="@_bulkDetails" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>检查对象</MudTh>
+                        <MudTh>检查项</MudTh>
+                        <MudTh>描述</MudTh>
+                        <MudTh>单位</MudTh>
+                        <MudTh>数值</MudTh>
+                        <MudTh>结果</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="row">
+                        <MudTd>
+                            <MudAutocomplete T="string" @bind-Value="row.CheckObject" SearchFunc="SearchCheckObjects"
+                                CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+                        </MudTd>
+                        <MudTd>
+                            <MudAutocomplete T="string" Value="@row.CheckItem"
+                                ValueChanged="@(v => OnRowCheckItemChanged(row, v))" SearchFunc="SearchCheckItems"
+                                CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+                        </MudTd>
+                        <MudTd>
+                            <MudText>@row.CheckDescription</MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudText>@row.Unit</MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudNumericField @bind-Value="row.NumericValue" Dense="true" Required="true" />
+                        </MudTd>
+                        <MudTd>
+                            <MudSelect T="InspectionResult" @bind-Value="row.Result" Dense="true">
+                                <MudSelectItem Value="InspectionResult.OK">OK</MudSelectItem>
+                                <MudSelectItem Value="InspectionResult.NG">NG</MudSelectItem>
+                            </MudSelect>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudStack>
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => _dlgDetail = false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!CanSaveDetail)" OnClick="SaveDetail">
+            确定
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private MudDataGrid<InspectionObject> InspectionObjectGrid;
+    private MudDataGrid<InspectionDoc> InspectionDocGrid;
+    private MudDataGrid<InspectionDetail> InspectionDetailGrid;
+    private readonly DialogOptions _dialogOptions = new() { FullWidth = true, MaxWidth = MaxWidth.ExtraLarge };
+
+    private sealed class DocFormState
+    {
+        public string Template { get; set; } = string.Empty;
+        public string Line { get; set; } = string.Empty;
+        public HashSet<WorkOrderDto> WorkOrders { get; set; } = new();
+        public string DocNumber { get; set; } = string.Empty;
+        public string Creator { get; set; } = string.Empty;
+        public DateTime? CreatedAt { get; set; } = DateTime.Now;
+        public bool AutoStartAndCreateObject { get; set; }
+    }
+    DocFormState Form = new();
+
+    private sealed class UIStreams : IDisposable
+    {
+        public readonly BehaviorSubject<InspectionDoc?> CurrentDocStream = new(null);
+        public readonly BehaviorSubject<List<InspectionObject>> ObjectsStream = new(new());
+        public readonly BehaviorSubject<List<InspectionDetail>> DetailsStream = new(new());
+        public void Dispose() { CurrentDocStream.Dispose(); ObjectsStream.Dispose(); DetailsStream.Dispose(); }
+    }
+    UIStreams Streams = new();
+    CompositeDisposable _subs = new();
+
+    List<InspectionDoc> _docs = new();
+    int _pageSize = 10;
+    int[] _pageOptions = new[] { 10, 20, 50 };
+    bool _dlgDoc;
+    bool _canSubmitDoc => !string.IsNullOrWhiteSpace(Form.Template) && !string.IsNullOrWhiteSpace(Form.Line)
+    && !string.IsNullOrWhiteSpace(Form.DocNumber) && !string.IsNullOrWhiteSpace(Form.Creator);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (firstRender)
+        {
+            SetupSubscriptions();
+            await Reload();
+            await InspectionDocGrid.SetSortAsync(nameof(InspectionDoc.CreatedAt), SortDirection.Descending, x => x.CreatedAt);
+        }
+    }
+
+    void SetupSubscriptions()
+    {
+        _subs.Add(Streams.CurrentDocStream.Subscribe(async doc =>
+        {
+            _currentDoc = doc;
+            if (doc != null)
+            {
+                var r = await DataSvc.QueryObjectsAsync(doc.DocNumber, 1, 50);
+                _objects = r.items.ToList();
+                _currentObject = _objects.FirstOrDefault();
+                _targetObjectId = _currentObject?.ObjectId ?? 0;
+                Streams.ObjectsStream.OnNext(_objects);
+                await ReloadDetails();
+                await LoadConfiguredItems();
+            }
+            await InvokeAsync(StateHasChanged);
+        }));
+        _subs.Add(Streams.ObjectsStream.Subscribe(objs => { _objects = objs; InvokeAsync(StateHasChanged); }));
+        _subs.Add(Streams.DetailsStream.Subscribe(dets => { _details = dets; InvokeAsync(StateHasChanged); }));
+    }
+
+    async Task Reload()
+    {
+        var page = 1; var size = 50; var r = await DataSvc.QueryDocsAsync(page, size); _docs =
+        r.items.ToList();
+        Streams.CurrentDocStream.OnNext(_docs.FirstOrDefault());
+    }
+    async Task NewDoc()
+    {
+        Form.Template = string.Empty; Form.Line = string.Empty; Form.WorkOrders = new(); Form.DocNumber = "EQP." +
+        DateTime.Now.ToString("yyyyMMdd") + "." + (_docs.Count(x => x.DocNumber.StartsWith("EQP." +
+        DateTime.Now.ToString("yyyyMMdd"))) + 1).ToString("D4");
+        Form.Creator = string.Empty; Form.CreatedAt = DateTime.Now; _dlgDoc = true;
+        var ops = await ConfigSvc.GetWorkOrderNamesAsync();
+        _workOrderOptions = ops.ToList();
+    }
+    async Task SaveDoc()
+    {
+        var doc = new InspectionDoc
+        {
+            TemplateName = Form.Template,
+            DocNumber = Form.DocNumber,
+            ProductionLineName = Form.Line,
+            WorkOrderNumbers = string.Join(",", Form.WorkOrders.Select(x => x.OrderNumber)),
+            Creator = Form.Creator,
+            CreatedAt = Form.CreatedAt ?? DateTime.Now,
+            Status = InspectionStatus.创建
+        };
+        await DataSvc.CreateDocAsync(doc);
+        _currentDoc = doc;
+        _docs.Add(_currentDoc);
+
+        if (Form.AutoStartAndCreateObject)
+        {
+            await StartDoc(_currentDoc);
+            _dlgDoc = false;
+        }
+        else
+        {
+            _dlgDoc = false;
+            await Reload();
+            await ReloadObjects();
+            _currentObject = _objects.FirstOrDefault();
+            _targetObjectId = _currentObject?.ObjectId ?? 0;
+        }
+    }
+    async Task<IEnumerable<string>> SearchTemplates(string value, CancellationToken _) => await Filter(await
+    ConfigSvc.GetTemplateNamesAsync(), value);
+    async Task<IEnumerable<string>> SearchLines(string value, CancellationToken _) => await Filter(await
+    ConfigSvc.GetProductionLineNamesAsync(), value);
+    async Task<IEnumerable<string>> SearchCreators(string value, CancellationToken _) => await Filter(await
+    ConfigSvc.GetCreatorNamesAsync(), value);
+    static Task<IEnumerable<string>> Filter(IEnumerable<string> src, string value)
+    {
+        var v = value ?? string.Empty;
+        var items = src.Where(x => string.IsNullOrEmpty(v) || x.Contains(v,
+        StringComparison.OrdinalIgnoreCase)).Take(10).ToList();
+        return Task.FromResult(items.AsEnumerable());
+    }
+
+    InspectionDoc? _currentDoc;
+    List<InspectionObject> _objects = new();
+    int _objPageSize = 10;
+    int[] _objPageOptions = new[] { 10, 20, 50 };
+    bool _dlgObject;
+    string _objectType = string.Empty;
+    string _objectName = string.Empty;
+    string _objectCreator = string.Empty;
+    DateTime? _objectCreatedAt = DateTime.Now;
+    InspectionObject? _currentObject;
+    List<InspectionDetail> _details = new();
+    int _detailPageSize = 15;
+    int[] _detailPageOptions = new[] { 15, 30, 60 };
+    bool _dlgDetail;
+    bool _bulkMode;
+    string _checkObject = string.Empty;
+    string _checkItem = string.Empty;
+    string _checkDescription = string.Empty;
+    string _unit = string.Empty;
+    decimal? _numericValue;
+    InspectionResult _detailResult = InspectionResult.OK;
+    int _targetObjectId;
+    List<string> _configuredItems = new();
+    List<DetailInput> _bulkDetails = new();
+    bool _dlgBulkAdd;
+    List<BulkDetailDto> _bulkDtoForObject = new();
+    bool CanSaveBulkAdd => _currentDoc != null && _currentDoc.Status == InspectionStatus.开始 && _currentObject != null &&
+    _bulkDtoForObject.Any() && _bulkDtoForObject.All(x => x.NumericValue.HasValue);
+    List<WorkOrderDto> _workOrderOptions = new List<WorkOrderDto>();
+
+    async Task ReloadObjects()
+    {
+        _objects = new List<InspectionObject>();
+        if (_currentDoc == null) { _details = new List<InspectionDetail>(); return; }
+        var r = await DataSvc.QueryObjectsAsync(_currentDoc.DocNumber, 1, 50); _objects = r.items.ToList();
+        _currentObject = _objects.FirstOrDefault();
+        await ReloadDetails();
+        await LoadConfiguredItems();
+    }
+    async Task ReloadDetails()
+    {
+        _details = new List<InspectionDetail>();
+        if (_currentObject == null) return;
+        var r = await DataSvc.QueryDetailsAsync(_currentObject.ObjectId, 1, 60); _details = r.items.ToList();
+    }
+    void NewObject()
+    {
+        if (_currentDoc == null) return;
+        _objectType = string.Empty;
+        _objectName = string.Empty;
+        _objectCreator = string.Empty;
+        _objectCreatedAt = DateTime.Now;
+        _dlgObject = true;
+    }
+    async Task SaveObject()
+    {
+        if (_currentDoc == null) { _dlgObject = false; return; }
+        var obj = new InspectionObject
+        {
+            TemplateName = _currentDoc.TemplateName,
+            DocNumber = _currentDoc.DocNumber,
+            ObjectType = _objectType,
+            ObjectName = _objectName,
+            Creator = _objectCreator,
+            CreatedAt = _objectCreatedAt ?? DateTime.Now
+        };
+        await DataSvc.AddObjectAsync(obj); _dlgObject = false; await ReloadObjects(); await LoadConfiguredItems();
+    }
+
+    void NewDetail()
+    {
+        _checkObject = "主设备" ?? string.Empty;
+        _checkItem = string.Empty;
+        _checkDescription = string.Empty;
+        _unit = string.Empty;
+        _numericValue = null;
+        _detailResult = InspectionResult.OK;
+        if (_currentObject != null && (_details == null || _details.Count == 0))
+            _bulkDetails = BuildDefaultDetailInputsForObject(_currentObject);
+        else
+            _bulkDetails = new List<DetailInput>();
+        _dlgDetail = true;
+    }
+
+    async Task SaveDetail()
+    {
+        var targetId = _targetObjectId != 0 ? _targetObjectId : _currentObject?.ObjectId ?? 0;
+        if (targetId == 0) { _dlgDetail = false; return; }
+        foreach (var row in _bulkDetails.Where(x => !string.IsNullOrWhiteSpace(x.CheckItem) && x.NumericValue.HasValue))
+        {
+            var d = new InspectionDetail
+            {
+                ObjectId = targetId,
+                CheckObject = "主设备",
+                CheckItem = row.CheckItem,
+                CheckDescription = row.CheckDescription,
+                Unit = row.Unit,
+                NumericValue = row.NumericValue,
+                Result = row.Result,
+                CreatedAt = DateTime.Now
+            };
+            await DataSvc.AddDetailAsync(d);
+        }
+        _currentObject = _objects.FirstOrDefault(x => x.ObjectId == targetId);
+        _dlgDetail = false; await ReloadDetails();
+    }
+
+    async Task SaveBulkAddForObject()
+    {
+        if (_currentObject == null || _targetObjectId == 0) { _dlgBulkAdd = false; return; }
+        foreach (var row in _bulkDtoForObject.Where(x => x.NumericValue.HasValue))
+        {
+            var d = new InspectionDetail
+            {
+                ObjectId = _targetObjectId,
+                CheckObject = "主设备",
+                CheckItem = row.CheckItem,
+                CheckDescription = string.Empty,
+                Unit = row.Unit,
+                NumericValue = row.NumericValue,
+                Result = row.Result,
+                CreatedAt = DateTime.Now
+            };
+            await DataSvc.AddDetailAsync(d);
+        }
+        _dlgBulkAdd = false;
+        _currentObject = _objects.FirstOrDefault(x => x.ObjectId == _targetObjectId);
+        await ReloadDetails();
+    }
+
+    public class BulkDetailDto
+    {
+        public string CheckItem { get; set; } = string.Empty;
+        public string Unit { get; set; } = string.Empty;
+        public decimal? NumericValue { get; set; }
+        public InspectionResult Result { get; set; } = InspectionResult.OK;
+    }
+    async Task<IEnumerable<string>> SearchObjectTypes(string value, CancellationToken _)
+    {
+        if (_currentDoc == null) return Enumerable.Empty<string>();
+        return await Filter(await ConfigSvc.GetObjectTypesAsync(_currentDoc.TemplateName), value);
+    }
+    async Task<IEnumerable<string>> SearchCheckObjects(string value, CancellationToken _)
+    {
+        if (_currentDoc == null) return Enumerable.Empty<string>();
+        return await Filter(await ConfigSvc.GetCheckObjectsAsync(_currentDoc.TemplateName, _objectType), value);
+    }
+    async Task<IEnumerable<string>> SearchCheckItems(string value, CancellationToken _)
+    {
+        if (_currentDoc == null) return Enumerable.Empty<string>();
+        return await Filter(await ConfigSvc.GetCheckItemsAsync(_currentDoc.TemplateName, _objectType), value);
+    }
+    bool CanSaveDetail => _currentDoc != null && _currentDoc.Status == InspectionStatus.开始 && _targetObjectId != 0 &&
+    _bulkDetails.Any(x => !string.IsNullOrWhiteSpace(x.CheckItem) && x.NumericValue.HasValue);
+
+    Color StatusColor(InspectionStatus s) => s switch
+    {
+        InspectionStatus.创建 => Color.Info,
+        InspectionStatus.开始 => Color.Success,
+        InspectionStatus.结束 => Color.Secondary,
+        _ => Color.Default
+    };
+
+    async Task StartDoc(InspectionDoc doc)
+    {
+        doc.Status = InspectionStatus.开始;
+        await DataSvc.UpdateDocStatusAsync(doc.DocNumber, InspectionStatus.开始);
+    }
+    async Task EndDoc(InspectionDoc doc)
+    {
+        doc.Status = InspectionStatus.结束;
+        await DataSvc.UpdateDocStatusAsync(doc.DocNumber, InspectionStatus.结束);
+    }
+    async Task OpenObjectsPanel(InspectionDoc doc)
+    {
+        _currentDoc = doc;
+        await ReloadObjects();
+        _openObjectsPanel = true;
+    }
+    void CloseObjectsPanel()
+    {
+        _openObjectsPanel = false;
+    }
+    void OpenDetailsPanel(InspectionObject obj)
+    {
+        _currentObject = obj;
+        _targetObjectId = obj.ObjectId;
+        _ = ReloadDetails();
+        _ = LoadConfiguredItems();
+        _openDetailsPanel = true;
+    }
+    void CloseDetailsPanel()
+    {
+        _openDetailsPanel = false;
+    }
+
+    void OnObjectRowClick(DataGridRowClickEventArgs<InspectionObject> e)
+    {
+        OpenDetailsPanel(e.Item);
+    }
+    void OnDocRowClick(DataGridRowClickEventArgs<InspectionDoc> e)
+    {
+        _ = OpenObjectsPanel(e.Item);
+    }
+
+    async Task LoadConfiguredItems()
+    {
+        _configuredItems = new List<string>();
+        if (_currentDoc == null || _currentObject == null) return;
+        var items = await ConfigSvc.GetCheckItemsAsync(_currentDoc.TemplateName, _currentObject.ObjectType);
+        _configuredItems = items.ToList();
+        StateHasChanged();
+    }
+
+
+    List<DetailInput> BuildDefaultDetailInputsForObject(InspectionObject obj)
+    {
+        var items = new List<string> { "外观", "尺寸", "重量" };
+        var list = new List<DetailInput>();
+        foreach (var it in items)
+        {
+            var unit = it == "尺寸" ? "mm" : it == "重量" ? "kg" : string.Empty;
+            list.Add(new DetailInput
+            {
+                Selected = true,
+                CheckObject = "主设备",
+                CheckItem = it,
+                Unit = unit,
+                CheckDescription =
+            string.Empty,
+                Result = InspectionResult.OK
+            });
+        }
+        return list;
+    }
+    async Task OnRowCheckItemChanged(DetailInput row, string value)
+    {
+        row.CheckItem = value ?? string.Empty;
+        var unit = row.CheckItem == "尺寸" ? "mm" : row.CheckItem == "重量" ? "kg" : "NA";
+        var desc = string.IsNullOrWhiteSpace(row.CheckItem) ? string.Empty : $"检查{row.CheckItem}";
+        row.Unit = unit;
+        row.CheckDescription = desc;
+        await InvokeAsync(StateHasChanged);
+    }
+    void AddDetailRow()
+    {
+        _bulkDetails.Add(new DetailInput
+        {
+            Selected = true,
+            CheckObject = _currentObject?.ObjectName ?? string.Empty,
+            Result =
+        InspectionResult.OK
+        });
+    }
+    public void Dispose() { _subs.Dispose(); Streams.Dispose(); }
+    bool _openObjectsPanel;
+    bool _openDetailsPanel;
+}

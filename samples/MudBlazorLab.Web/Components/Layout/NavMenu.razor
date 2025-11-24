@@ -8,12 +8,20 @@
     <MudNavLink Href="autogrid-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.TableChart">AutoGrid Demo
     </MudNavLink>
 
-    <MudNavLink Href="three-level-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DeviceHub">
-        Three Level Demo
+    <MudNavLink Href="dropdown-with-datagrid" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DeviceHub">
+        dropdown-with-datagrid
     </MudNavLink>
 
     <MudNavLink Href="rabbit-rx-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MarkUnreadChatAlt">
         log-demo
+    </MudNavLink>
+
+    <MudNavLink Href="grid-datagrid-select-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MarkUnreadChatAlt">
+        GridDataGridSelect Demo 
+    </MudNavLink>
+
+    <MudNavLink Href="filterable-multiselect-demo" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FilterList">
+        FilterableMultiSelect Demo
     </MudNavLink>
 
     <MudNavLink Href="incoming-inspection" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">
@@ -27,6 +35,11 @@
     <FeatureGuard Feature="ShiftInspection">
         <MudNavLink Href="shift-random-inspection" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FactCheck">
             开班点检 & 随机点检</MudNavLink>
+    </FeatureGuard>
+
+    <FeatureGuard Feature="ShiftInspection">
+        <MudNavLink Href="shift-random-inspection2" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.FactCheck">
+            开班点检 & 随机点检2</MudNavLink>
     </FeatureGuard>
 
     <AuthorizeView>

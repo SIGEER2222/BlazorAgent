@@ -3,7 +3,7 @@
 
 <MudDataGrid T="LogEntry" Items="@ViewItems" Bordered="true" Dense="true" Hover="true" Filterable="true"
     FilterMode="@DataGridFilterMode.ColumnFilterRow" FixedHeader=true Height="@Height"
-    ColumnResizeMode="ResizeMode.Container" RowsPerPage="@PageSize">
+    ColumnResizeMode="ResizeMode.Container" RowsPerPage="@PageSize" SortMode="SortMode.Multiple">
 
     <ToolBarContent>
         <MudStack Row=true AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
@@ -12,7 +12,7 @@
     </ToolBarContent>
 
     <Columns>
-        <PropertyColumn T="LogEntry" TProperty="DateTime" Property="@(x => x.Time)" Title="时间">
+        <PropertyColumn T="LogEntry" TProperty="DateTime" Property="@(x => x.Time)" Title="时间" Sortable="true">
             <CellTemplate Context="ctx">
                 <MudText Class="text-nowrap">@ctx.Item.Time</MudText>
             </CellTemplate>

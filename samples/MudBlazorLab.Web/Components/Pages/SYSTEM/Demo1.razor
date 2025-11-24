@@ -1,0 +1,115 @@
+@page "/dropdown-with-datagrid"
+
+<MudCard>
+    <MudCardContent>
+        <MudText Typo="Typo.h6">选择你的选项</MudText>
+
+        <!-- 方案1: 使用 MudMenu 包裹 MudDataGrid -->
+        <MudMenu FullWidth="true" MaxHeight="600">
+            <ActivatorContent>
+                <MudTextField @bind-Value="selectedText"
+                              Label="已选择的项"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.ArrowDropDown" />
+            </ActivatorContent>
+            <ChildContent>
+                <MudPaper Style="max-height: 500px; overflow-y: auto; width: 100%;">
+                    <MudDataGrid T="OptionItem"
+                                 Items="@options"
+                                 MultiSelection="true"
+                                 SelectedItems="@selectedItems"
+                                 SelectedItemsChanged="@OnSelectedItemsChanged"
+                                 SelectOnRowClick="true"
+                                 Hover="true"
+                                 Dense="true"
+                                 Height="400"
+                                 Filterable="true"
+                                 FilterMode="DataGridFilterMode.ColumnFilterRow"
+                                 SortMode="SortMode.Multiple"
+                                 >
+                        <Columns>
+                            <SelectColumn T="OptionItem" />
+                            <PropertyColumn Property="x => x.Id" Title="ID" Filterable="true" Sortable="true" />
+                            <PropertyColumn Property="x => x.Name" Title="名称" Filterable="true" Sortable="true" />
+                        </Columns>
+                        <PagerContent>
+                            <MudDataGridPager T="OptionItem" />
+                        </PagerContent>
+                    </MudDataGrid>
+                </MudPaper>
+            </ChildContent>
+        </MudMenu>
+
+        <MudText Typo="Typo.body2" Class="mt-4">
+            已选择 @selectedItems.Count 项：@selectedText
+        </MudText>
+
+        <!-- 显示所有选项的状态 -->
+        <MudText Typo="Typo.h6" Class="mt-4">当前选项状态：</MudText>
+        <MudTable Items="options" Dense="true" Hover="true" Striped="true">
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>名称</MudTh>
+                <MudTh>是否选中</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="名称">@context.Name</MudTd>
+                <MudTd DataLabel="是否选中">
+                    <MudIcon Icon="@(selectedItems.Contains(context) ? Icons.Material.Filled.CheckBox : Icons.Material.Filled.CheckBoxOutlineBlank)"
+                             Color="@(selectedItems.Contains(context) ? Color.Success : Color.Default)" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private HashSet<OptionItem> selectedItems = new HashSet<OptionItem>();
+    private string selectedText = string.Empty;
+
+    // 当DataGrid选中项改变时更新文本框
+    private void OnSelectedItemsChanged(HashSet<OptionItem> items)
+    {
+        selectedItems = items;
+        selectedText = selectedItems.Any()
+            ? string.Join(", ", selectedItems.Select(o => o.Name))
+            : string.Empty;
+    }
+
+    private List<OptionItem> options = new List<OptionItem>
+    {
+        new OptionItem { Id = 1, Name = "选项1" },
+        new OptionItem { Id = 2, Name = "选项2" },
+        new OptionItem { Id = 3, Name = "选项3" },
+        new OptionItem { Id = 4, Name = "选项4" },
+        new OptionItem { Id = 5, Name = "选项5" },
+        new OptionItem { Id = 6, Name = "选项6" },
+        new OptionItem { Id = 7, Name = "选项7" },
+        new OptionItem { Id = 8, Name = "选项8" },
+        new OptionItem { Id = 9, Name = "选项9" },
+        new OptionItem { Id = 10, Name = "选项10" },
+        new OptionItem { Id = 11, Name = "测试A" },
+        new OptionItem { Id = 12, Name = "测试B" },
+        new OptionItem { Id = 13, Name = "测试C" },
+        new OptionItem { Id = 14, Name = "数据项1" },
+        new OptionItem { Id = 15, Name = "数据项2" }
+    };
+
+    public class OptionItem
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+
+        // 重写 Equals 和 GetHashCode 以便 HashSet 正确工作
+        public override bool Equals(object obj)
+        {
+            return obj is OptionItem item && Id == item.Id;
+        }
+
+        public override int GetHashCode()
+        {
+            return Id.GetHashCode();
+        }
+    }
+}
