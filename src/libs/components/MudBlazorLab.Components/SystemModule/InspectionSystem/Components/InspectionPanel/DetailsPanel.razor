@@ -1,0 +1,252 @@
+@using global::InspectionSystem.Models
+@using InspectionSystem.Data
+@using InspectionSystem.Services
+@namespace MudBlazorLab.Components.Components.InspectionPanel
+@using MudBlazor
+@inject IInspectionDataService DataSvc
+@inject IInspectionConfigService ConfigSvc
+
+<MudOverlay @bind-Visible="@Visible" DarkBackground="true" Class="d-flex align-center justify-center">
+    <MudPaper Elevation="24" Class="pa-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">详情：@(CurrentObject?.ObjectName)</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                Disabled="@(CurrentDoc==null || CurrentDoc.Status!=InspectionStatus.开始 || CurrentObject==null)"
+                StartIcon="@Icons.Material.Filled.AddTask" OnClick="NewDetail">新增详情项</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Close">关闭</MudButton>
+        </MudStack>
+        <MudExpansionPanels Elevation="0">
+            <MudExpansionPanel Text="配置的详情项">
+                <MudList T="string" Dense="true">
+                    @foreach (var it in _configuredItems)
+                    {
+                        <MudListItem T="string">@it</MudListItem>
+                    }
+                </MudList>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+        <MudDataGrid @ref="InspectionDetailGrid" T="InspectionDetail" Items="@_details" Bordered="true" Dense="true"
+            Hover="true" Filterable="true" FixedHeader="true" Height="60vh" RowsPerPage="@_detailPageSize"
+            SortMode="SortMode.Multiple">
+            <Columns>
+                <PropertyColumn T="InspectionDetail" TProperty="string" Property="@(x => x.CheckObject)" Title="检查对象" />
+                <PropertyColumn T="InspectionDetail" TProperty="string" Property="@(x => x.CheckItem)" Title="检查项" />
+                <PropertyColumn T="InspectionDetail" TProperty="string" Property="@(x => x.CheckDescription)"
+                    Title="检查描述" />
+                <PropertyColumn T="InspectionDetail" TProperty="string" Property="@(x => x.Unit)" Title="单位" />
+                <PropertyColumn T="InspectionDetail" TProperty="decimal?" Property="@(x => x.NumericValue)"
+                    Title="数值" />
+                <PropertyColumn T="InspectionDetail" TProperty="InspectionResult" Property="@(x => x.Result)"
+                    Title="结果" />
+                <PropertyColumn T="InspectionDetail" TProperty="DateTime" Property="@(x => x.CreatedAt)" Title="创建时间"
+                    Sortable="true" />
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="InspectionDetail" PageSizeOptions="@_detailPageOptions" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+</MudOverlay>
+
+<MudDialog @bind-Visible="_dlgDetail" Options="_dialogOptions">
+    <DialogContent>
+        <MudPaper Class="pa-2">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.h6">新增详情项</MudText>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                        OnClick="AddDetailRow">新增一行</MudButton>
+                </MudStack>
+
+                <MudTable Items="@_bulkDetails" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>检查对象</MudTh>
+                        <MudTh>检查项</MudTh>
+                        <MudTh>描述</MudTh>
+                        <MudTh>单位</MudTh>
+                        <MudTh>数值</MudTh>
+                        <MudTh>结果</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="row">
+                        <MudTd>
+                            <MudAutocomplete T="string" @bind-Value="row.CheckObject" SearchFunc="SearchCheckObjects"
+                                CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+                        </MudTd>
+                        <MudTd>
+                            <MudAutocomplete T="string" Value="@row.CheckItem"
+                                ValueChanged="@(v => OnRowCheckItemChanged(row, v))" SearchFunc="SearchCheckItems"
+                                CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+                        </MudTd>
+                        <MudTd>
+                            <MudText>@row.CheckDescription</MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudText>@row.Unit</MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudNumericField @bind-Value="row.NumericValue" Dense="true" Required="true" />
+                        </MudTd>
+                        <MudTd>
+                            <MudSelect T="InspectionResult" @bind-Value="row.Result" Dense="true">
+                                <MudSelectItem Value="InspectionResult.OK">OK</MudSelectItem>
+                                <MudSelectItem Value="InspectionResult.NG">NG</MudSelectItem>
+                            </MudSelect>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudStack>
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => _dlgDetail = false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!CanSaveDetail)" OnClick="SaveDetail">确定
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public InspectionDoc? CurrentDoc { get; set; }
+    [Parameter] public InspectionObject? CurrentObject { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private MudDataGrid<InspectionDetail> InspectionDetailGrid;
+    List<InspectionDetail> _details = new();
+    int _detailPageSize = 15;
+    int[] _detailPageOptions = new[] { 15, 30, 60 };
+    bool _dlgDetail;
+    int _targetObjectId;
+    List<string> _configuredItems = new();
+    List<DetailInput> _bulkDetails = new();
+    readonly DialogOptions _dialogOptions = new() { FullWidth = true, MaxWidth = MaxWidth.ExtraLarge };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible && CurrentObject != null)
+        {
+            _targetObjectId = CurrentObject.ObjectId;
+            await ReloadDetails();
+            await LoadConfiguredItems();
+        }
+    }
+
+    async Task ReloadDetails()
+    {
+        _details = new List<InspectionDetail>();
+        var r = await DataSvc.QueryDetailsAsync(CurrentObject!.ObjectId, 1, 60);
+        _details = r.items.ToList();
+    }
+
+    async Task LoadConfiguredItems()
+    {
+        _configuredItems = new List<string>();
+        if (CurrentDoc == null || CurrentObject == null) return;
+        var items = await ConfigSvc.GetCheckItemsAsync(CurrentDoc.TemplateName, CurrentObject.ObjectType);
+        _configuredItems = items.ToList();
+        StateHasChanged();
+    }
+
+    void NewDetail()
+    {
+        if (CurrentObject != null && (_details == null || _details.Count == 0))
+            _bulkDetails = BuildDefaultDetailInputsForObject(CurrentObject);
+        else
+            _bulkDetails = new List<DetailInput>();
+        _dlgDetail = true;
+    }
+
+    bool CanSaveDetail => CurrentDoc != null && CurrentDoc.Status == InspectionStatus.开始 && _targetObjectId != 0 &&
+    _bulkDetails.Any(x => !string.IsNullOrWhiteSpace(x.CheckItem) && x.NumericValue.HasValue);
+
+    async Task SaveDetail()
+    {
+        var targetId = _targetObjectId != 0 ? _targetObjectId : CurrentObject?.ObjectId ?? 0;
+        if (targetId == 0) { _dlgDetail = false; return; }
+        foreach (var row in _bulkDetails.Where(x => !string.IsNullOrWhiteSpace(x.CheckItem) && x.NumericValue.HasValue))
+        {
+            var d = new InspectionDetail
+            {
+                ObjectId = targetId,
+                CheckObject = "主设备",
+                CheckItem = row.CheckItem,
+                CheckDescription = row.CheckDescription,
+                Unit = row.Unit,
+                NumericValue = row.NumericValue,
+                Result = row.Result,
+                CreatedAt = DateTime.Now
+            };
+            await DataSvc.AddDetailAsync(d);
+        }
+        _dlgDetail = false;
+        await ReloadDetails();
+    }
+
+    async Task<IEnumerable<string>> SearchCheckObjects(string value, CancellationToken _)
+    {
+        if (CurrentDoc == null) return Enumerable.Empty<string>();
+        return await Filter(await ConfigSvc.GetCheckObjectsAsync(CurrentDoc.TemplateName, CurrentObject?.ObjectType ??
+        string.Empty), value);
+    }
+    async Task<IEnumerable<string>> SearchCheckItems(string value, CancellationToken _)
+    {
+        if (CurrentDoc == null) return Enumerable.Empty<string>();
+        return await Filter(await ConfigSvc.GetCheckItemsAsync(CurrentDoc.TemplateName, CurrentObject?.ObjectType ??
+        string.Empty), value);
+    }
+    static Task<IEnumerable<string>> Filter(IEnumerable<string> src, string value)
+    {
+        var v = value ?? string.Empty;
+        var items = src.Where(x => string.IsNullOrEmpty(v) || x.Contains(v,
+        StringComparison.OrdinalIgnoreCase)).Take(10).ToList();
+        return Task.FromResult(items.AsEnumerable());
+    }
+
+    List<DetailInput> BuildDefaultDetailInputsForObject(InspectionObject obj)
+    {
+        var items = new List<string> { "外观", "尺寸", "重量" };
+        var list = new List<DetailInput>();
+        foreach (var it in items)
+        {
+            var unit = it == "尺寸" ? "mm" : it == "重量" ? "kg" : string.Empty;
+            list.Add(new DetailInput
+            {
+                Selected = true,
+                CheckObject = "主设备",
+                CheckItem = it,
+                Unit = unit,
+                CheckDescription =
+            string.Empty,
+                Result = InspectionResult.OK
+            });
+        }
+        return list;
+    }
+
+    async Task OnRowCheckItemChanged(DetailInput row, string value)
+    {
+        row.CheckItem = value ?? string.Empty;
+        var unit = row.CheckItem == "尺寸" ? "mm" : row.CheckItem == "重量" ? "kg" : "NA";
+        var desc = string.IsNullOrWhiteSpace(row.CheckItem) ? string.Empty : $"检查{row.CheckItem}";
+        row.Unit = unit;
+        row.CheckDescription = desc;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void AddDetailRow()
+    {
+        _bulkDetails.Add(new DetailInput
+        {
+            Selected = true,
+            CheckObject = CurrentObject?.ObjectName ?? string.Empty,
+            Result =
+        InspectionResult.OK
+        });
+    }
+
+    void Close()
+    {
+        OnClose.InvokeAsync();
+    }
+}

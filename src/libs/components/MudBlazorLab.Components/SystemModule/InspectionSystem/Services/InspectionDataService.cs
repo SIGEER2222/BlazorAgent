@@ -4,7 +4,7 @@ using InspectionSystem.Models;
 namespace InspectionSystem.Services;
 
 public class InspectionDataService : IInspectionDataService {
-    readonly InspectionDb _db;
+    public readonly InspectionDb _db;
     public InspectionDataService(InspectionDb db) { _db = db; }
     public Task<(IEnumerable<InspectionDoc> items, int total)> QueryDocsAsync(int page, int pageSize) {
         int total = 0;

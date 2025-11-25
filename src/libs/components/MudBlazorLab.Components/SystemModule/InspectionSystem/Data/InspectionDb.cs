@@ -1,33 +1,30 @@
 using SqlSugar;
 using InspectionSystem.Models;
+using HmiInspection.Models;
 
 namespace InspectionSystem.Data;
 
-public class InspectionDb
-{
+public class InspectionDb {
     public SqlSugarClient Db { get; }
 
-    public InspectionDb(string connectionString)
-    {
-        Db = new SqlSugarClient(new ConnectionConfig
-        {
+    public InspectionDb(string connectionString) {
+        Db = new SqlSugarClient(new ConnectionConfig {
             ConnectionString = connectionString,
-            DbType = DbType.Sqlite,
+            DbType = DbType.PostgreSQL,
             IsAutoCloseConnection = true,
         });
 
-        try
-        {
+        try {
             Db.CodeFirst.InitTables(typeof(InspectionDoc), typeof(InspectionObject), typeof(InspectionDetail), typeof(TemplateInfo), typeof(TemplateCheckItem), typeof(ProductionLine), typeof(WorkOrder));
+            Db.CodeFirst.InitTables(typeof(InspectionFormTemplate), typeof(InspectionFormTemplateObject), typeof(InspectionFormTemplateObjectItem),
+                 typeof(InspectionForm), typeof(InspectionFormObject), typeof(InspectionFormObjectSample), typeof(InspectionFormObjectSampleItem));
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             var msg = ex.Message ?? string.Empty;
             var needRecreate = msg.Contains("Sqlite no support alter column primary key", StringComparison.OrdinalIgnoreCase)
                 || msg.Contains("Specified method is not supported", StringComparison.OrdinalIgnoreCase)
                 || msg.Contains("bind error", StringComparison.OrdinalIgnoreCase);
-            if (needRecreate)
-            {
+            if (needRecreate) {
                 Db.DbMaintenance.DropTable("InspectionDetail");
                 Db.DbMaintenance.DropTable("InspectionObject");
                 Db.DbMaintenance.DropTable("InspectionDoc");
@@ -48,4 +45,6 @@ public class InspectionDb
     public ISugarQueryable<TemplateCheckItem> TemplateItems => Db.Queryable<TemplateCheckItem>();
     public ISugarQueryable<ProductionLine> Lines => Db.Queryable<ProductionLine>();
     public ISugarQueryable<WorkOrder> WorkOrders => Db.Queryable<WorkOrder>();
+
+
 }

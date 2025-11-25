@@ -1,0 +1,204 @@
+@using global::InspectionSystem.Models
+@using InspectionSystem.Data
+@using InspectionSystem.Services
+@namespace MudBlazorLab.Components.Components.InspectionPanel
+@using MudBlazor
+@inject IInspectionConfigService ConfigSvc
+@inject IInspectionDataService DataSvc
+
+<MudDataGrid @ref="InspectionDocGrid" T="InspectionDoc" Items="@_docs" Bordered="true" Dense="true" Hover="true"
+    Filterable="true" FixedHeader="true" Height="80vh" RowsPerPage="@_pageSize" RowClick="OnDocRowClick"
+    SortMode="SortMode.Multiple">
+    <ToolBarContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">表单</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewDoc"
+                StartIcon="@Icons.Material.Filled.Add">新增表单</MudButton>
+        </MudStack>
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.DocNumber)" Title="单号" />
+        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.TemplateName)" Title="模板" />
+        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.ProductionLineName)" Title="产线" />
+        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.WorkOrderNumbers)" Title="工单" />
+        <PropertyColumn T="InspectionDoc" TProperty="InspectionStatus" Property="@(x => x.Status)" Title="状态">
+            <CellTemplate Context="ctx">
+                <MudChip Size="Size.Small" T="string" Color="@StatusColor(ctx.Item.Status)" Variant="Variant.Outlined">
+                    @ctx.Item.Status
+                </MudChip>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.Creator)" Title="创建人" />
+        <PropertyColumn T="InspectionDoc" TProperty="DateTime" Property="@(x => x.CreatedAt)" Title="创建时间"
+            Sortable="true" />
+        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.DocNumber)" Title="操作">
+            <CellTemplate Context="doc">
+                <MudStack Row="true" Spacing="1">
+                    <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" Size="Size.Small"
+                        Disabled="@(doc.Item.Status!=InspectionStatus.创建)" OnClick="@(()=>StartDoc(doc.Item))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Stop" Color="Color.Secondary" Size="Size.Small"
+                        Disabled="@(doc.Item.Status!=InspectionStatus.开始)" OnClick="@(()=>EndDoc(doc.Item))" />
+                </MudStack>
+            </CellTemplate>
+        </PropertyColumn>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="InspectionDoc" PageSizeOptions="@_pageOptions" />
+    </PagerContent>
+</MudDataGrid>
+
+<MudDialog @bind-Visible="_dlgDoc">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudAutocomplete T="string" @bind-Value="Form.Template" Label="模板" Placeholder="模板"
+                SearchFunc="SearchTemplates" CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+            <MudAutocomplete T="string" @bind-Value="Form.Line" Label="产线" Placeholder="产线" SearchFunc="SearchLines"
+                CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+
+            <GridDataGridSelect TItem="fab_work_order" Items="@_workOrderOptions" @bind-SelectedItems="Form.WorkOrders"
+                DisplayTextSelector="@(p => p.WorkOrder)" Label="工单">
+                <ColumnsTemplate>
+                    <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.ProductName)"
+                        Title="产品名称" />
+                    <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.WorkOrder)" Title="工单号" />
+                    <PropertyColumn T="fab_work_order" TProperty="string"
+                        Property="@(x => x.PlanNedStartDate.ToString("yyyy-MM-dd"))" Title="计划开始时间" />
+                    <PropertyColumn T="fab_work_order" TProperty="string"
+                        Property="@(x => x.PlanNeddueDate.ToString("yyyy-MM-dd"))" Title="计划结束时间" />
+                </ColumnsTemplate>
+            </GridDataGridSelect>
+
+            <MudTextField @bind-Value="Form.DocNumber" Label="单号" Placeholder="单号" Required="true" />
+            <MudAutocomplete T="string" @bind-Value="Form.Creator" Label="创建人" Placeholder="创建人"
+                SearchFunc="SearchCreators" CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+            <MudDatePicker @bind-Date="Form.CreatedAt" Label="创建日期" />
+            <MudSwitch T="bool" @bind-Value="Form.AutoStartAndCreateObject" Color="Color.Primary" Label="立即开始" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => _dlgDoc = false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!_canSubmitDoc)" OnClick="SaveDoc">确定
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<ObjectsPanel Visible="_openObjectsPanel" Doc="_currentDoc" OnClose="CloseObjectsPanel" />
+
+@code {
+    private MudDataGrid<InspectionDoc> InspectionDocGrid;
+    List<InspectionDoc> _docs = new();
+    int _pageSize = 10;
+    int[] _pageOptions = new[] { 10, 20, 50 };
+    bool _dlgDoc;
+    InspectionDoc? _currentDoc;
+    List<fab_work_order> _workOrderOptions = new();
+
+    private sealed class DocFormState
+    {
+        public string Template { get; set; } = string.Empty;
+        public string Line { get; set; } = string.Empty;
+        public HashSet<fab_work_order> WorkOrders { get; set; } = new();
+        public string DocNumber { get; set; } = string.Empty;
+        public string Creator { get; set; } = string.Empty;
+        public DateTime? CreatedAt { get; set; } = DateTime.Now;
+        public bool AutoStartAndCreateObject { get; set; }
+    }
+    DocFormState Form = new();
+    bool _canSubmitDoc => !string.IsNullOrWhiteSpace(Form.Template) && !string.IsNullOrWhiteSpace(Form.Line)
+    && !string.IsNullOrWhiteSpace(Form.DocNumber) && !string.IsNullOrWhiteSpace(Form.Creator);
+    bool _openObjectsPanel;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Reload();
+            await InspectionDocGrid.SetSortAsync(nameof(InspectionDoc.CreatedAt), SortDirection.Descending, x => x.CreatedAt);
+        }
+    }
+
+    async Task Reload()
+    {
+        var r = await DataSvc.QueryDocsAsync(1, 50);
+        _docs = r.items.ToList();
+        _currentDoc = _docs.FirstOrDefault();
+        StateHasChanged();
+    }
+
+    async Task NewDoc()
+    {
+        Form = new();
+        Form.DocNumber = "EQP." + DateTime.Now.ToString("yyyyMMdd") + "." + (_docs.Count(x => x.DocNumber.StartsWith("EQP." +
+        DateTime.Now.ToString("yyyyMMdd"))) + 1).ToString("D4");
+        _dlgDoc = true;
+        _workOrderOptions = (await ConfigSvc.GetWorkOrderNamesAsync()).ToList();
+    }
+
+    async Task SaveDoc()
+    {
+        var doc = new InspectionDoc
+        {
+            TemplateName = Form.Template,
+            DocNumber = Form.DocNumber,
+            ProductionLineName = Form.Line,
+            WorkOrderNumbers = string.Join(",", Form.WorkOrders.Select(x => x.WorkOrder)),
+            Creator = Form.Creator,
+            CreatedAt = Form.CreatedAt ?? DateTime.Now,
+            Status = InspectionStatus.创建
+        };
+        await DataSvc.CreateDocAsync(doc);
+        _currentDoc = doc;
+        _docs.Add(doc);
+        if (Form.AutoStartAndCreateObject)
+        {
+            await StartDoc(doc);
+        }
+        _dlgDoc = false;
+        await Reload();
+    }
+
+    async Task<IEnumerable<string>> SearchTemplates(string value, CancellationToken _) => await Filter(await
+    ConfigSvc.GetTemplateNamesAsync(), value);
+    async Task<IEnumerable<string>> SearchLines(string value, CancellationToken _) => await Filter(await
+    ConfigSvc.GetProductionLineNamesAsync(), value);
+    async Task<IEnumerable<string>> SearchCreators(string value, CancellationToken _) => await Filter(await
+    ConfigSvc.GetCreatorNamesAsync(), value);
+    static Task<IEnumerable<string>> Filter(IEnumerable<string> src, string value)
+    {
+        var v = value ?? string.Empty;
+        var items = src.Where(x => string.IsNullOrEmpty(v) || x.Contains(v,
+        StringComparison.OrdinalIgnoreCase)).Take(10).ToList();
+        return Task.FromResult(items.AsEnumerable());
+    }
+
+    Color StatusColor(InspectionStatus s) => s switch
+    {
+        InspectionStatus.创建 => Color.Info,
+        InspectionStatus.开始 => Color.Success,
+        InspectionStatus.结束 => Color.Secondary,
+        _ => Color.Default
+    };
+
+    async Task StartDoc(InspectionDoc doc)
+    {
+        doc.Status = InspectionStatus.开始;
+        await DataSvc.UpdateDocStatusAsync(doc.DocNumber, InspectionStatus.开始);
+    }
+    async Task EndDoc(InspectionDoc doc)
+    {
+        doc.Status = InspectionStatus.结束;
+        await DataSvc.UpdateDocStatusAsync(doc.DocNumber, InspectionStatus.结束);
+    }
+
+    void OnDocRowClick(DataGridRowClickEventArgs<InspectionDoc> e)
+    {
+        _currentDoc = e.Item;
+        _openObjectsPanel = true;
+    }
+
+    void CloseObjectsPanel()
+    {
+        _openObjectsPanel = false;
+    }
+}

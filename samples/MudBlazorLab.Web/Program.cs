@@ -23,10 +23,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IPermissionService>(new PermissionService(PermissionRegistry.FeatureRoles));
 
 builder.Services.AddSingleton<IInspectionConfigService, InMemoryInspectionConfigService>();
-var dataDir = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
-if (!Directory.Exists(dataDir)) Directory.CreateDirectory(dataDir);
-var dbPath = Path.Combine(dataDir, "inspection.db");
-var conn = $"Data Source={dbPath}";
+var conn = $"Host=localhost;Port=54322;Database=mom;Username=postgres;Password=postgres;SearchPath=mom";
 builder.Services.AddSingleton(new InspectionDb(conn));
 builder.Services.AddSingleton<IInspectionDataService, InspectionDataService>();
 
