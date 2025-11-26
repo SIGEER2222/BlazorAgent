@@ -86,7 +86,6 @@
 
     async Task ReloadObjects()
     {
-        _objects = new List<InspectionFormObject>();
         var r = Db.Db.Queryable<InspectionFormObject>().Where(x => x.FormSysid == Form!.Sysid).ToList();
         _objects = r;
         _currentObject = _objects.FirstOrDefault();

@@ -89,7 +89,7 @@
 
 @code {
     [Parameter] public string FormType { get; set; } = string.Empty;
-    private MudDataGrid<InspectionForm> InspectionDocGrid;
+    private MudDataGrid<InspectionForm> InspectionDocGrid;  
     List<InspectionForm> _forms = new();
     int _pageSize = 10;
     int[] _pageOptions = new[] { 10, 20, 50 };

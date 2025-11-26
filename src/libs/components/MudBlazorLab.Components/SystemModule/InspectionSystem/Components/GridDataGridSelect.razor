@@ -4,16 +4,16 @@
 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
     <MudTextField @bind-Value="selectedText" Label="@Label" Variant="@Variant" ReadOnly="true" FullWidth="@FullWidth" />
     <!-- 根据 _open 状态切换图标 -->
-    <MudIconButton Icon="@(_open ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" 
-                   Color="Color.Default" 
+    <MudIconButton Icon="@(_open? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)"
+                   Color="Color.Default"
                    OnClick="@(() => _open = !_open)" />
-    
+
     <MudPopover Open="@_open" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
         <MudPaper Style="@($"max-height: {GridMaxHeight}px; overflow-y: auto; width: 100%;")">
             <MudDataGrid T="TItem" Items="@Items" MultiSelection="true" SelectedItems="@selectedItems"
-                SelectedItemsChanged="@OnSelectedItemsChangedInternal" SelectOnRowClick="true" Hover="true"
-                Dense="@Dense" Height="@GridHeight" Filterable="@Filterable" FilterMode="@FilterMode"
-                SortMode="@SortMode">
+                         SelectedItemsChanged="@OnSelectedItemsChangedInternal" SelectOnRowClick="true" Hover="true"
+                         Dense="@Dense" Height="@GridHeight" Filterable="@Filterable" FilterMode="@FilterMode"
+                         SortMode="@SortMode">
                 <Columns>
                     <SelectColumn T="TItem" />
                     @ColumnsTemplate

@@ -63,7 +63,7 @@
 
                 <MudTable Items="@_bulkDetails" Dense="true" Hover="true">
                     <HeaderContent>
-                        @* <MudTh>检查对象</MudTh> *@
+                        <MudTh>检查对象</MudTh>
                         <MudTh>检查项</MudTh>
                         <MudTh>描述</MudTh>
                         <MudTh>单位</MudTh>
@@ -71,10 +71,9 @@
                         <MudTh>结果</MudTh>
                     </HeaderContent>
                     <RowTemplate Context="row">
-                        @* <MudTd>
-                            <MudAutocomplete T="string" @bind-Value="row.ItemName" SearchFunc="SearchCheckObjects"
-                                CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
-                        </MudTd> *@
+                        <MudTd>
+                            <MudText>@CurrentObject?.ObjectName</MudText>
+                        </MudTd>
                         <MudTd>
                             <MudAutocomplete T="string" @bind-Value="@row.ItemName" SearchFunc="SearchCheckItems"
                                 CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
@@ -107,7 +106,6 @@
 </MudDialog>
 
 @code {
-
     [Parameter] public bool Visible { get; set; }
     [Parameter] public InspectionForm? CurrentDoc { get; set; }
     [Parameter] public InspectionFormObject? CurrentObject { get; set; }
@@ -160,17 +158,22 @@
     }
 
     bool CanSaveDetail => CurrentDoc != null && CurrentDoc.Status == "开始" && _targetObjectId != Guid.Empty &&
-    _bulkDetails.Any(x => !string.IsNullOrWhiteSpace(x.ItemName) && x.Value.HasValue);
+    _bulkDetails.All(x => !string.IsNullOrWhiteSpace(x.ItemName)) &&
+    _bulkDetails.All(x => !string.IsNullOrWhiteSpace(x.CheckResult));
 
     async Task SaveDetail()
     {
+        var lstSample = Db.Db.Queryable<InspectionFormObjectSample>().Where(x => x.FormObjectSysid == CurrentObject.Sysid).ToList();
+        var lstItem = Db.Db.Queryable<InspectionFormObjectSampleItem>().Where(x => lstSample.Select(y => y.Sysid).Contains(x.FormObjectSampleSysid)).ToList();
+
+        var allOK = lstItem.All(x => x.CheckResult == "OK") && _bulkDetails.All(x => x.CheckResult == "OK");
+
         var sample = Db.Db.Queryable<InspectionFormObjectSample>().Where(x => x.FormObjectSysid == CurrentObject.Sysid).First();
         var newSample = new InspectionFormObjectSample
         {
             Sysid = Guid.NewGuid(),
             FormObjectSysid = CurrentObject.Sysid,
-            CheckResult =
-            _bulkDetails.Any(x => x.CheckResult == "NG") ? "NG" : "OK"
+            CheckResult = allOK ? "NG" : "OK"
         };
         if (sample == null)
         {
@@ -180,6 +183,13 @@
 
         _bulkDetails.ForEach(x => x.FormObjectSampleSysid = sample.Sysid);
         Db.Db.Insertable(_bulkDetails).ExecuteCommand();
+
+
+        sample.CheckResult = allOK ? "OK" : "NG";
+        CurrentObject.CheckResult = allOK ? "OK" : "NG";
+
+        await Db.Db.Updateable(CurrentObject).ExecuteCommandAsync();
+        await Db.Db.Updateable(sample).ExecuteCommandAsync();
 
         _dlgDetail = false;
         await ReloadDetails();
@@ -197,7 +207,7 @@
 
         var sample = Db.Db.Queryable<InspectionFormObjectSample>().Where(x => x.FormObjectSysid == CurrentObject.Sysid).ToList();
         var lst = Db.Db.Queryable<InspectionFormObjectSampleItem>().Where(x => sample.Select(y => y.Sysid).Contains(x.FormObjectSampleSysid)).ToList();
-        return lst.Select(x => x.ItemName);
+        return lst.Select(x => x.ItemName).Distinct();
     }
     static Task<IEnumerable<string>> Filter(IEnumerable<string> src, string value)
     {
