@@ -19,10 +19,10 @@
         </MudStack>
     </ToolBarContent>
     <Columns>
-        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormNo)" Title="单号" />
         <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormTemplateName)" Title="模板" />
-        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.ProductName)" Title="产线" />
+        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormNo)" Title="单号" />
         <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.WorkCenter)" Title="工单" />
+        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.ProductName)" Title="产线" />
         <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.Status)" Title="状态">
             <CellTemplate Context="ctx">
                 <MudChip Size="Size.Small" T="string" Color="@StatusColorText(ctx.Item.Status)"
@@ -31,9 +31,8 @@
                 </MudChip>
             </CellTemplate>
         </PropertyColumn>
+        <PropertyColumn T="InspectionForm" TProperty="DateTime?" Property="@(x => x.TxnTime)" Title="创建时间"/>
         <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.CreateUser)" Title="创建人" />
-        <PropertyColumn T="InspectionForm" TProperty="DateTime?" Property="@(x => x.TxnTime)" Title="创建时间"
-            Sortable="true" />
         <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormNo)" Title="操作">
             <CellTemplate Context="doc">
                 <MudStack Row="true" Spacing="1">
@@ -90,7 +89,6 @@
 @code {
     [Parameter] public string FormType { get; set; } = string.Empty;
     private MudDataGrid<InspectionForm> InspectionDocGrid;  
-    List<InspectionForm> _forms = new();
     int _pageSize = 10;
     int[] _pageOptions = new[] { 10, 20, 50 };
     bool _dlgDoc;
@@ -122,7 +120,6 @@
 
     async Task Reload()
     {
-        _currentForm = await Db.Db.Queryable<InspectionForm>().OrderBy("TxnTime desc").FirstAsync();
         await InspectionDocGrid.ReloadServerData();
     }
 
@@ -218,10 +215,27 @@
 
     async Task<GridData<InspectionForm>> LoadDocs(GridState<InspectionForm> state)
     {
-        var q = Db.Db.Queryable<InspectionForm>();
-        var data = await GridServerData.QueryAsync(q, state);
-        _forms = data.Items.ToList();
-        if (_currentForm == null) _currentForm = _forms.FirstOrDefault();
-        return data;
+        var filters = InspectionDocGrid.FilterDefinitions;
+        var predicate = FilterHelper<InspectionForm>.BuildExpression(filters);
+        using var repo = new Repository<InspectionForm>(Db.Db);
+        var result = await repo.LoadGridDataAsync(
+            state,
+            selector: x => x,
+            orderSelector: sort => sort switch
+            {
+                nameof(InspectionForm.FormTemplateName) => o => o.FormTemplateName,
+                nameof(InspectionForm.FormNo) => o => o.FormNo,
+                nameof(InspectionForm.WorkCenter) => o => o.WorkCenter,
+                nameof(InspectionForm.ProductName) => o => o.ProductName,
+                nameof(InspectionForm.Status) => o => o.Status,
+                nameof(InspectionForm.TxnTime) => o => o.TxnTime,
+                nameof(InspectionForm.CreateUser) => o => o.CreateUser,
+                _ => o => o.TxnTime
+            },
+            filter: predicate
+        );
+        if (_currentForm == null) _currentForm = result.Items.FirstOrDefault();
+        return result;
     }
+
 }

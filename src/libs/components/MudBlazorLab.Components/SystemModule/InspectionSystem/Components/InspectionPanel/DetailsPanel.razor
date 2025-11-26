@@ -18,16 +18,6 @@
                 StartIcon="@Icons.Material.Filled.AddTask" OnClick="NewDetail">新增详情项</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Close">关闭</MudButton>
         </MudStack>
-        <MudExpansionPanels Elevation="0">
-            <MudExpansionPanel Text="配置的详情项">
-                <MudList T="string" Dense="true">
-                    @foreach (var it in _configuredItems)
-                    {
-                        <MudListItem T="string">@it</MudListItem>
-                    }
-                </MudList>
-            </MudExpansionPanel>
-        </MudExpansionPanels>
         <MudDataGrid @ref="InspectionDetailGrid" T="InspectionFormObjectSampleItem" Items="@_details" Bordered="true"
             Dense="true" Hover="true" Filterable="true" FixedHeader="true" Height="60vh" RowsPerPage="@_detailPageSize"
             SortMode="SortMode.Multiple">
