@@ -2,12 +2,6 @@ using InspectionSystem.Models;
 
 namespace InspectionSystem.Data;
 
-public class WorkOrderDto {
-    public int Id { get; set; }
-    public string OrderNumber { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-}
-
 public class DetailInput {
     public bool Selected { get; set; }
     public string CheckObject { get; set; } = string.Empty;

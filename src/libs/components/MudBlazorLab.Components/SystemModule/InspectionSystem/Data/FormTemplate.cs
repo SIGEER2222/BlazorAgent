@@ -75,7 +75,7 @@ public class InspectionFormTemplateObjectItem {
     [SugarColumn(Length = 40, ColumnName = "Unit")]
     public string Unit { get; set; }
 
-    [SugarColumn(Length = 2048, ColumnName = "ItemDescription")]
+    [SugarColumn(ColumnDataType = "longtext,text,clob", ColumnName = "ItemDescription")]
     public string ItemDescription { get; set; }
 }
 

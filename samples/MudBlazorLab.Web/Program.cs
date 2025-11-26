@@ -25,7 +25,6 @@ builder.Services.AddSingleton<IPermissionService>(new PermissionService(Permissi
 builder.Services.AddSingleton<IInspectionConfigService, InMemoryInspectionConfigService>();
 var conn = $"Host=localhost;Port=54322;Database=mom;Username=postgres;Password=postgres;SearchPath=mom";
 builder.Services.AddSingleton(new InspectionDb(conn));
-builder.Services.AddSingleton<IInspectionDataService, InspectionDataService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options => {
@@ -40,10 +39,6 @@ builder.Services.AddAuthorization(options => {
 });
 
 builder.Services.AddHttpContextAccessor();
-
-// Register RabbitMQ Consumer Service and host it
-builder.Services.AddSingleton<RabbitMQConsumerService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<RabbitMQConsumerService>());
 
 // Register RabbitMQ Message Service for UI components
 builder.Services.AddSingleton<IRabbitMQMessageService>(sp =>

@@ -1,41 +1,39 @@
 @using global::InspectionSystem.Models
 @using InspectionSystem.Services
+@using InspectionSystem.Data
+@using HmiInspection.Models
 @namespace MudBlazorLab.Components.Components.InspectionPanel
 @using MudBlazor
-@inject IInspectionDataService DataSvc
 @inject IInspectionConfigService ConfigSvc
+@inject InspectionSystem.Data.InspectionDb Db
 
 <MudOverlay @bind-Visible="@Visible" DarkBackground="true" Class="d-flex align-center justify-center">
     <MudPaper Elevation="24" Class="pa-4">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudText Typo="Typo.h6">对象：@(Doc?.DocNumber)</MudText>
+            <MudText Typo="Typo.h6">对象：@(Form?.FormNo)</MudText>
             <MudSpacer />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                Disabled="@(Doc==null || Doc.Status!=InspectionStatus.开始)" StartIcon="@Icons.Material.Filled.Add"
-                OnClick="NewObject">新增对象</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(Form == null || Form.Status != "开始")"
+                StartIcon="@Icons.Material.Filled.Add" OnClick="NewObject">新增对象</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Close">关闭</MudButton>
         </MudStack>
-        <MudDataGrid @ref="InspectionObjectGrid" T="InspectionObject" Items="@_objects" Bordered="true" Dense="true"
+        <MudDataGrid @ref="InspectionObjectGrid" T="InspectionFormObject" Items="@_objects" Bordered="true" Dense="true"
             Hover="true" Filterable="true" FixedHeader="true" Height="65vh" RowsPerPage="@_objPageSize"
             RowClick="OnObjectRowClick" SortMode="SortMode.Multiple">
             <Columns>
-                <PropertyColumn T="InspectionObject" TProperty="string" Property="@(x => x.DocNumber)" Title="单号" />
-                <PropertyColumn T="InspectionObject" TProperty="string" Property="@(x => x.TemplateName)" Title="模板" />
-                <TemplateColumn T="InspectionObject" Title="产线">
+                <PropertyColumn T="InspectionFormObject" TProperty="string" Property="@(x => x.ObjectType)"
+                    Title="对象类型" />
+                <PropertyColumn T="InspectionFormObject" TProperty="string" Property="@(x => x.ObjectName)"
+                    Title="对象名称" />
+                <TemplateColumn T="InspectionFormObject" Title="产线">
                     <CellTemplate Context="obj">
-                        @Doc?.ProductionLineName
+                        @Form?.ProductName
                     </CellTemplate>
                 </TemplateColumn>
-                <PropertyColumn T="InspectionObject" TProperty="string" Property="@(x => x.ObjectType)" Title="对象类型" />
-                <PropertyColumn T="InspectionObject" TProperty="string" Property="@(x => x.ObjectName)" Title="对象名称" />
-                <PropertyColumn T="InspectionObject" TProperty="InspectionResult?" Property="@(x => x.Result)"
+                <PropertyColumn T="InspectionFormObject" TProperty="string" Property="@(x => x.CheckResult)"
                     Title="结果" />
-                <PropertyColumn T="InspectionObject" TProperty="string" Property="@(x => x.Creator)" Title="创建人" />
-                <PropertyColumn T="InspectionObject" TProperty="DateTime" Property="@(x => x.CreatedAt)" Title="创建时间"
-                    Sortable="true" />
             </Columns>
             <PagerContent>
-                <MudDataGridPager T="InspectionObject" PageSizeOptions="@_objPageOptions" />
+                <MudDataGridPager T="InspectionFormObject" PageSizeOptions="@_objPageOptions" />
             </PagerContent>
         </MudDataGrid>
     </MudPaper>
@@ -57,15 +55,16 @@
     </DialogActions>
 </MudDialog>
 
-<DetailsPanel Visible="_openDetailsPanel" CurrentDoc="Doc" CurrentObject="_currentObject" OnClose="CloseDetailsPanel" />
+<DetailsPanel Visible="_openDetailsPanel" CurrentDoc="Form" CurrentObject="_currentObject"
+    OnClose="CloseDetailsPanel" />
 
 @code {
     [Parameter] public bool Visible { get; set; }
-    [Parameter] public InspectionDoc? Doc { get; set; }
+    [Parameter] public InspectionForm? Form { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
-    private MudDataGrid<InspectionObject> InspectionObjectGrid;
-    List<InspectionObject> _objects = new();
+    private MudDataGrid<InspectionFormObject> InspectionObjectGrid;
+    List<InspectionFormObject> _objects = new();
     int _objPageSize = 10;
     int[] _objPageOptions = new[] { 10, 20, 50 };
     bool _dlgObject;
@@ -73,13 +72,13 @@
     string _objectName = string.Empty;
     string _objectCreator = string.Empty;
     DateTime? _objectCreatedAt = DateTime.Now;
-    InspectionObject? _currentObject;
-    int _targetObjectId;
+    InspectionFormObject? _currentObject;
+    Guid _targetObjectId;
     bool _openDetailsPanel;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (Visible && Doc != null)
+        if (Visible && Form != null)
         {
             await ReloadObjects();
         }
@@ -87,16 +86,16 @@
 
     async Task ReloadObjects()
     {
-        _objects = new List<InspectionObject>();
-        var r = await DataSvc.QueryObjectsAsync(Doc!.DocNumber, 1, 50);
-        _objects = r.items.ToList();
+        _objects = new List<InspectionFormObject>();
+        var r = Db.Db.Queryable<InspectionFormObject>().Where(x => x.FormSysid == Form!.Sysid).ToList();
+        _objects = r;
         _currentObject = _objects.FirstOrDefault();
-        _targetObjectId = _currentObject?.ObjectId ?? 0;
+        _targetObjectId = _currentObject?.Sysid ?? Guid.Empty;
     }
 
     void NewObject()
     {
-        if (Doc == null) return;
+        if (Form == null) return;
         _objectType = string.Empty;
         _objectName = string.Empty;
         _objectCreator = string.Empty;
@@ -106,25 +105,24 @@
 
     async Task SaveObject()
     {
-        if (Doc == null) { _dlgObject = false; return; }
-        var obj = new InspectionObject
+        if (Form == null) { _dlgObject = false; return; }
+        var obj = new InspectionFormObject
         {
-            TemplateName = Doc.TemplateName,
-            DocNumber = Doc.DocNumber,
+            Sysid = Guid.NewGuid(),
+            FormSysid = Form.Sysid,
             ObjectType = _objectType,
             ObjectName = _objectName,
-            Creator = _objectCreator,
-            CreatedAt = _objectCreatedAt ?? DateTime.Now
+            CheckResult = "OK"
         };
-        await DataSvc.AddObjectAsync(obj);
+        Db.Db.Insertable(obj).ExecuteCommand();
         _dlgObject = false;
         await ReloadObjects();
     }
 
     async Task<IEnumerable<string>> SearchObjectTypes(string value, CancellationToken _)
     {
-        if (Doc == null) return Enumerable.Empty<string>();
-        return await Filter(await ConfigSvc.GetObjectTypesAsync(Doc.TemplateName), value);
+        if (Form == null) return Enumerable.Empty<string>();
+        return await Filter(await ConfigSvc.GetObjectTypesAsync(Form.FormTemplateName), value);
     }
     static Task<IEnumerable<string>> Filter(IEnumerable<string> src, string value)
     {
@@ -134,10 +132,10 @@
         return Task.FromResult(items.AsEnumerable());
     }
 
-    void OnObjectRowClick(DataGridRowClickEventArgs<InspectionObject> e)
+    void OnObjectRowClick(DataGridRowClickEventArgs<InspectionFormObject> e)
     {
         _currentObject = e.Item;
-        _targetObjectId = e.Item.ObjectId;
+        _targetObjectId = e.Item.Sysid;
         _openDetailsPanel = true;
     }
 

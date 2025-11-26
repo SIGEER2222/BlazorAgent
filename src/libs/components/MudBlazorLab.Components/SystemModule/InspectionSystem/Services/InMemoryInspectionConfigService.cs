@@ -1,5 +1,5 @@
 using InspectionSystem.Data;
-using InspectionSystem.Models;
+using HmiInspection.Models;
 
 namespace InspectionSystem.Services;
 
@@ -8,19 +8,66 @@ public class InMemoryInspectionConfigService : IInspectionConfigService {
     _db = db;
   }
   InspectionDb _db;
-  public readonly List<string> _templates = new() { "模板_开班检查_MA5", "模板_开班检查_MA5_FG" };
-  public readonly List<string> _lines = new() { "MA5_Assembly", "MA5_FG" };
-  public readonly List<string> _creators = new() { "admin@example.com", "user@example.com", "manager@example.com", "editor@example.com" };
-  public Task<List<string>> GetTemplateNamesAsync() => Task.FromResult(_templates);
-  public Task<string?> GetInspectionLevelAsync(string templateName) => Task.FromResult<string?>("II");
-  public Task<List<string>> GetProductionLineNamesAsync() => Task.FromResult(_lines);
-  public Task<List<fab_work_order>> GetWorkOrderNamesAsync() {
-    return _db.Db.Queryable<fab_work_order>().ToListAsync();
+
+  public Task<List<string>> GetTemplateNamesAsync()
+    => _db.Db.Queryable<InspectionFormTemplate>().Select(x => x.FormTemplateName).Distinct().ToListAsync();
+
+  public Task<List<string>> GetProductionLineNamesAsync()
+    => _db.Db.Queryable<InspectionForm>().Select(x => x.ProductName).Distinct().ToListAsync();
+
+  public Task<List<fab_work_order>> GetWorkOrderNamesAsync()
+    => _db.Db.Queryable<fab_work_order>().ToListAsync();
+
+  public async Task<List<string>> GetObjectTypesAsync(string templateName) {
+    var tpl = await _db.Db.Queryable<InspectionFormTemplate>().Where(x => x.FormTemplateName == templateName).FirstAsync();
+    if (tpl == null) return new List<string>();
+    return await _db.Db.Queryable<InspectionFormTemplateObject>()
+      .Where(x => x.FormTemplateSysid == tpl.Sysid)
+      .Select(x => x.ObjectType)
+      .Distinct()
+      .ToListAsync();
   }
-  public Task<List<string>> GetObjectTypesAsync(string templateName) => Task.FromResult(new List<string> { "设备", "工装" });
-  public Task<List<string>> GetCheckObjectsAsync(string templateName, string objectType) => Task.FromResult(new List<string> { "主设备", "辅设备" });
-  public Task<List<string>> GetCheckItemsAsync(string templateName, string objectType) => Task.FromResult(new List<string> { "高度", "长度", "重量" });
-  public Task<List<string>> GetDescriptionsAsync(string templateName, string objectType) => Task.FromResult(new List<string> { "检查尺寸", "检查重量" });
-  public Task<List<string>> GetUnitsAsync(string templateName, string objectType) => Task.FromResult(new List<string> { "cm", "mm", "kg" });
-  public Task<List<string>> GetCreatorNamesAsync() => Task.FromResult(_creators);
+
+  public async Task<List<string>> GetCheckObjectsAsync(string templateName, string objectType) {
+    var tpl = await _db.Db.Queryable<InspectionFormTemplate>().Where(x => x.FormTemplateName == templateName).FirstAsync();
+    if (tpl == null) return new List<string>();
+    return await _db.Db.Queryable<InspectionFormTemplateObject>()
+      .Where(x => x.FormTemplateSysid == tpl.Sysid && x.ObjectType == objectType)
+      .Select(x => x.ObjectName)
+      .Distinct()
+      .ToListAsync();
+  }
+
+  public async Task<List<string>> GetCheckItemsAsync(string templateName, string objectType) {
+    var tpl = await _db.Db.Queryable<InspectionFormTemplate>().Where(x => x.FormTemplateName == templateName).FirstAsync();
+    if (tpl == null) return new List<string>();
+    var objIds = await _db.Db.Queryable<InspectionFormTemplateObject>()
+      .Where(x => x.FormTemplateSysid == tpl.Sysid && x.ObjectType == objectType)
+      .Select(x => x.Sysid)
+      .ToListAsync();
+    if (objIds.Count == 0) return new List<string>();
+    return await _db.Db.Queryable<InspectionFormTemplateObjectItem>()
+      .Where(x => objIds.Contains(x.FormTemplateObjectSysid))
+      .Select(x => x.ItemName)
+      .Distinct()
+      .ToListAsync();
+  }
+
+  public Task<List<string>> GetCreatorNamesAsync() => _db.Db.Queryable<InspectionForm>().Select(x => x.CreateUser).Distinct().ToListAsync();
+
+  public async Task<List<InspectionFormTemplateObject>> GetTemplateObjectsAsync(string templateName) {
+    var tpl = await _db.Db.Queryable<InspectionFormTemplate>().Where(x => x.FormTemplateName == templateName).FirstAsync();
+    if (tpl == null) return new List<InspectionFormTemplateObject>();
+    return await _db.Db.Queryable<InspectionFormTemplateObject>().Where(x => x.FormTemplateSysid == tpl.Sysid).ToListAsync();
+  }
+
+  public async Task<List<InspectionFormTemplateObjectItem>> GetTemplateObjectItemsAsync(string templateName,string ObjectName) {
+    var tpl = await _db.Db.Queryable<InspectionFormTemplate>().Where(x => x.FormTemplateName == templateName).FirstAsync();
+    var obj = await _db.Db.Queryable<InspectionFormTemplateObject>().Where(x => x.FormTemplateSysid == tpl.Sysid && x.ObjectName == ObjectName).FirstAsync();
+    var items = await _db.Db.Queryable<InspectionFormTemplateObjectItem>().Where(x => x.FormTemplateObjectSysid == obj.Sysid).ToListAsync();
+    return items;
+  }
+
+  public Task<List<InspectionFormTemplateObjectItem>> GetTemplateObjectItemsAsync(Guid templateObjectSysid)
+    => _db.Db.Queryable<InspectionFormTemplateObjectItem>().Where(x => x.FormTemplateObjectSysid == templateObjectSysid).ToListAsync();
 }

@@ -31,8 +31,8 @@ public class InspectionForm {
     /// <summary>
     /// ERP单号
     /// </summary>
-    [SugarColumn(Length = 12, ColumnName = "TicketNo")]
-    public string TicketNo { get; set; }
+    [SugarColumn(Length = 12, ColumnName = "TicketNo", IsNullable = true)]
+    public string? TicketNo { get; set; }
 
     /// <summary>
     /// 产线名称
@@ -49,7 +49,7 @@ public class InspectionForm {
     /// <summary>
     /// 创建日期
     /// </summary>
-    [SugarColumn(ColumnName = "TxnTime")]
+    [SugarColumn(ColumnName = "TxnTime", ColumnDataType = "timestamp", IsNullable = true)]
     public DateTime? TxnTime { get; set; }
 
     /// <summary>
@@ -61,7 +61,7 @@ public class InspectionForm {
     /// <summary>
     /// 工单单号
     /// </summary>
-    [SugarColumn(Length = 2048, ColumnName = "WorkCenter")]
+    [SugarColumn(ColumnDataType = "longtext,text,clob", ColumnName = "WorkCenter")]
     public string WorkCenter { get; set; }
 }
 
@@ -94,25 +94,25 @@ public class InspectionFormObject {
     /// <summary>
     /// 模版定义总量
     /// </summary>
-    [SugarColumn(ColumnName = "TemplateSamplingRatio")]
+    [SugarColumn(ColumnName = "TemplateSamplingRatio", IsNullable = true)]
     public decimal? TemplateSamplingRatio { get; set; }
 
     /// <summary>
     /// 总量
     /// </summary>
-    [SugarColumn(ColumnName = "TotalQuantity")]
+    [SugarColumn(ColumnName = "TotalQuantity", IsNullable = true)]
     public long? TotalQuantity { get; set; }
 
     /// <summary>
     /// 抽样数
     /// </summary>
-    [SugarColumn(ColumnName = "SampleQuantity")]
+    [SugarColumn(ColumnName = "SampleQuantity", IsNullable = true)]
     public long? SampleQuantity { get; set; }
 
     /// <summary>
     /// 实际抽样比
     /// </summary>
-    [SugarColumn(ColumnName = "actualSamplingRatio")]
+    [SugarColumn(ColumnName = "actualSamplingRatio", IsNullable = true)]
     public decimal? ActualSamplingRatio { get; set; }
 
     /// <summary>
@@ -139,13 +139,13 @@ public class InspectionFormObjectSample {
     /// <summary>
     /// 批次(可为空)
     /// </summary>
-    [SugarColumn(Length = 40, ColumnName = "SampleBatchNo")]
+    [SugarColumn(Length = 40, ColumnName = "SampleBatchNo", IsNullable = true)]
     public string SampleBatchNo { get; set; }
 
     /// <summary>
     /// 载具名称(可为空)
     /// </summary>
-    [SugarColumn(Length = 40, ColumnName = "CarrierName")]
+    [SugarColumn(Length = 40, ColumnName = "CarrierName", IsNullable = true)]
     public string CarrierName { get; set; }
 
     /// <summary>
@@ -178,13 +178,13 @@ public class InspectionFormObjectSampleItem {
     /// <summary>
     /// 数值
     /// </summary>
-    [SugarColumn(ColumnName = "Value")]
+    [SugarColumn(ColumnName = "Value", IsNullable = true)]
     public decimal? Value { get; set; }
 
     /// <summary>
     /// 单位
     /// </summary>
-    [SugarColumn(Length = 40, ColumnName = "Unit")]
+    [SugarColumn(Length = 40, ColumnName = "Unit", IsNullable = true)]
     public string Unit { get; set; }
 
     /// <summary>
@@ -193,6 +193,6 @@ public class InspectionFormObjectSampleItem {
     [SugarColumn(Length = 40, ColumnName = "CheckResult")]
     public string CheckResult { get; set; }
 
-    [SugarColumn(Length = 2048, ColumnName = "itemdesc")]
-    public string Itemdesc { get; set; }
+    [SugarColumn(ColumnDataType = "longtext,text,clob", ColumnName = "ItemDescription", IsNullable = true)]
+    public string ItemDescription { get; set; }
 }

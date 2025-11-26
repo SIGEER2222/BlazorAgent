@@ -1,12 +1,13 @@
 @using global::InspectionSystem.Models
 @using InspectionSystem.Data
 @using InspectionSystem.Services
+@using HmiInspection.Models
 @namespace MudBlazorLab.Components.Components.InspectionPanel
 @using MudBlazor
 @inject IInspectionConfigService ConfigSvc
-@inject IInspectionDataService DataSvc
+@inject InspectionSystem.Data.InspectionDb Db
 
-<MudDataGrid @ref="InspectionDocGrid" T="InspectionDoc" Items="@_docs" Bordered="true" Dense="true" Hover="true"
+<MudDataGrid @ref="InspectionDocGrid" T="InspectionForm" ServerData="LoadDocs" Bordered="true" Dense="true" Hover="true"
     Filterable="true" FixedHeader="true" Height="80vh" RowsPerPage="@_pageSize" RowClick="OnDocRowClick"
     SortMode="SortMode.Multiple">
     <ToolBarContent>
@@ -18,33 +19,34 @@
         </MudStack>
     </ToolBarContent>
     <Columns>
-        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.DocNumber)" Title="单号" />
-        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.TemplateName)" Title="模板" />
-        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.ProductionLineName)" Title="产线" />
-        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.WorkOrderNumbers)" Title="工单" />
-        <PropertyColumn T="InspectionDoc" TProperty="InspectionStatus" Property="@(x => x.Status)" Title="状态">
+        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormNo)" Title="单号" />
+        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormTemplateName)" Title="模板" />
+        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.ProductName)" Title="产线" />
+        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.WorkCenter)" Title="工单" />
+        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.Status)" Title="状态">
             <CellTemplate Context="ctx">
-                <MudChip Size="Size.Small" T="string" Color="@StatusColor(ctx.Item.Status)" Variant="Variant.Outlined">
+                <MudChip Size="Size.Small" T="string" Color="@StatusColorText(ctx.Item.Status)"
+                    Variant="Variant.Outlined">
                     @ctx.Item.Status
                 </MudChip>
             </CellTemplate>
         </PropertyColumn>
-        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.Creator)" Title="创建人" />
-        <PropertyColumn T="InspectionDoc" TProperty="DateTime" Property="@(x => x.CreatedAt)" Title="创建时间"
+        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.CreateUser)" Title="创建人" />
+        <PropertyColumn T="InspectionForm" TProperty="DateTime?" Property="@(x => x.TxnTime)" Title="创建时间"
             Sortable="true" />
-        <PropertyColumn T="InspectionDoc" TProperty="string" Property="@(x => x.DocNumber)" Title="操作">
+        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormNo)" Title="操作">
             <CellTemplate Context="doc">
                 <MudStack Row="true" Spacing="1">
                     <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" Size="Size.Small"
-                        Disabled="@(doc.Item.Status!=InspectionStatus.创建)" OnClick="@(()=>StartDoc(doc.Item))" />
+                        Disabled="@(doc.Item.Status!="创建")" OnClick="@(()=>StartForm(doc.Item))" />
                     <MudIconButton Icon="@Icons.Material.Filled.Stop" Color="Color.Secondary" Size="Size.Small"
-                        Disabled="@(doc.Item.Status!=InspectionStatus.开始)" OnClick="@(()=>EndDoc(doc.Item))" />
+                        Disabled="@(doc.Item.Status!="开始")" OnClick="@(()=>EndForm(doc.Item))" />
                 </MudStack>
             </CellTemplate>
         </PropertyColumn>
     </Columns>
     <PagerContent>
-        <MudDataGridPager T="InspectionDoc" PageSizeOptions="@_pageOptions" />
+        <MudDataGridPager T="InspectionForm" PageSizeOptions="@_pageOptions" />
     </PagerContent>
 </MudDataGrid>
 
@@ -83,15 +85,16 @@
     </DialogActions>
 </MudDialog>
 
-<ObjectsPanel Visible="_openObjectsPanel" Doc="_currentDoc" OnClose="CloseObjectsPanel" />
+<ObjectsPanel Visible="_openObjectsPanel" Form="_currentForm" OnClose="CloseObjectsPanel" />
 
 @code {
-    private MudDataGrid<InspectionDoc> InspectionDocGrid;
-    List<InspectionDoc> _docs = new();
+    [Parameter] public string FormType { get; set; } = string.Empty;
+    private MudDataGrid<InspectionForm> InspectionDocGrid;
+    List<InspectionForm> _forms = new();
     int _pageSize = 10;
     int[] _pageOptions = new[] { 10, 20, 50 };
     bool _dlgDoc;
-    InspectionDoc? _currentDoc;
+    InspectionForm? _currentForm;
     List<fab_work_order> _workOrderOptions = new();
 
     private sealed class DocFormState
@@ -113,49 +116,60 @@
     {
         if (firstRender)
         {
-            await Reload();
-            await InspectionDocGrid.SetSortAsync(nameof(InspectionDoc.CreatedAt), SortDirection.Descending, x => x.CreatedAt);
+            await InspectionDocGrid.SetSortAsync(nameof(InspectionForm.TxnTime), SortDirection.Descending, x => x.TxnTime!.Value);
         }
     }
 
     async Task Reload()
     {
-        var r = await DataSvc.QueryDocsAsync(1, 50);
-        _docs = r.items.ToList();
-        _currentDoc = _docs.FirstOrDefault();
-        StateHasChanged();
+        _currentForm = await Db.Db.Queryable<InspectionForm>().OrderBy("TxnTime desc").FirstAsync();
+        await InspectionDocGrid.ReloadServerData();
     }
 
     async Task NewDoc()
     {
         Form = new();
-        Form.DocNumber = "EQP." + DateTime.Now.ToString("yyyyMMdd") + "." + (_docs.Count(x => x.DocNumber.StartsWith("EQP." +
-        DateTime.Now.ToString("yyyyMMdd"))) + 1).ToString("D4");
+        var prefix = DateTime.Now.ToString("yyyyMMdd");
+        var countToday = await Db.Db.Queryable<InspectionForm>().Where(x => x.FormNo.StartsWith(prefix)).CountAsync();
+        Form.DocNumber = prefix + "." + (countToday + 1).ToString("D4");
         _dlgDoc = true;
         _workOrderOptions = (await ConfigSvc.GetWorkOrderNamesAsync()).ToList();
     }
 
     async Task SaveDoc()
     {
-        var doc = new InspectionDoc
+        var doc = new InspectionForm
         {
-            TemplateName = Form.Template,
-            DocNumber = Form.DocNumber,
-            ProductionLineName = Form.Line,
-            WorkOrderNumbers = string.Join(",", Form.WorkOrders.Select(x => x.WorkOrder)),
-            Creator = Form.Creator,
-            CreatedAt = Form.CreatedAt ?? DateTime.Now,
-            Status = InspectionStatus.创建
+            Sysid = Guid.NewGuid(),
+            FormTemplateName = Form.Template,
+            FormNo = Form.DocNumber,
+            FormType = FormType,
+            ProductName = Form.Line,
+            WorkCenter = string.Join(",", Form.WorkOrders.Select(x => x.WorkOrder)),
+            CreateUser = Form.Creator,
+            TxnTime = Form.CreatedAt ?? DateTime.Now,
+            Status = "创建"
         };
-        await DataSvc.CreateDocAsync(doc);
-        _currentDoc = doc;
-        _docs.Add(doc);
+        Db.Db.Insertable(doc).ExecuteCommand();
+        _currentForm = doc;
         if (Form.AutoStartAndCreateObject)
         {
-            await StartDoc(doc);
+            await StartForm(doc);
         }
         _dlgDoc = false;
-        await Reload();
+
+        var templateObj = await ConfigSvc.GetTemplateObjectsAsync(Form.Template);
+        var lstObj = templateObj.Select(x => new InspectionFormObject
+        {
+            Sysid = Guid.NewGuid(),
+            FormSysid = doc.Sysid,
+            ObjectName = x.ObjectName,
+            ObjectType = x.ObjectType,
+            CheckResult = InspectionResult.OK.ToString()
+        }).ToList();
+        Db.Db.Insertable(lstObj).ExecuteCommand();
+
+        await InspectionDocGrid.ReloadServerData();
     }
 
     async Task<IEnumerable<string>> SearchTemplates(string value, CancellationToken _) => await Filter(await
@@ -172,33 +186,42 @@
         return Task.FromResult(items.AsEnumerable());
     }
 
-    Color StatusColor(InspectionStatus s) => s switch
+    Color StatusColorText(string s) => s switch
     {
-        InspectionStatus.创建 => Color.Info,
-        InspectionStatus.开始 => Color.Success,
-        InspectionStatus.结束 => Color.Secondary,
+        "创建" => Color.Info,
+        "开始" => Color.Success,
+        "结束" => Color.Secondary,
         _ => Color.Default
     };
 
-    async Task StartDoc(InspectionDoc doc)
+    async Task StartForm(InspectionForm doc)
     {
-        doc.Status = InspectionStatus.开始;
-        await DataSvc.UpdateDocStatusAsync(doc.DocNumber, InspectionStatus.开始);
+        doc.Status = "开始";
+        Db.Db.Updateable(doc).ExecuteCommand();
     }
-    async Task EndDoc(InspectionDoc doc)
+    async Task EndForm(InspectionForm doc)
     {
-        doc.Status = InspectionStatus.结束;
-        await DataSvc.UpdateDocStatusAsync(doc.DocNumber, InspectionStatus.结束);
+        doc.Status = "结束";
+        Db.Db.Updateable(doc).ExecuteCommand();
     }
 
-    void OnDocRowClick(DataGridRowClickEventArgs<InspectionDoc> e)
+    void OnDocRowClick(DataGridRowClickEventArgs<InspectionForm> e)
     {
-        _currentDoc = e.Item;
+        _currentForm = e.Item;
         _openObjectsPanel = true;
     }
 
     void CloseObjectsPanel()
     {
         _openObjectsPanel = false;
+    }
+
+    async Task<GridData<InspectionForm>> LoadDocs(GridState<InspectionForm> state)
+    {
+        var q = Db.Db.Queryable<InspectionForm>();
+        var data = await GridServerData.QueryAsync(q, state);
+        _forms = data.Items.ToList();
+        if (_currentForm == null) _currentForm = _forms.FirstOrDefault();
+        return data;
     }
 }

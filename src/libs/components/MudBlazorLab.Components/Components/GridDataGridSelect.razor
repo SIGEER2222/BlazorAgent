@@ -1,29 +1,19 @@
 @typeparam TItem where TItem : class
 @using MudBlazor
 
-<MudMenu FullWidth="@FullWidth" MaxHeight="@MaxHeight">
-    <ActivatorContent>
-        <MudTextField @bind-Value="selectedText"
-                      Label="@Label"
-                      Adornment="Adornment.End"
-                      AdornmentIcon="@Icons.Material.Filled.ArrowDropDown"
-                      Variant="@Variant"
-                      ReadOnly="true" />
-    </ActivatorContent>
-    <ChildContent>
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+    <MudTextField @bind-Value="selectedText" Label="@Label" Variant="@Variant" ReadOnly="true" FullWidth="@FullWidth" />
+    <!-- 根据 _open 状态切换图标 -->
+    <MudIconButton Icon="@(_open ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" 
+                   Color="Color.Default" 
+                   OnClick="@(() => _open = !_open)" />
+    
+    <MudPopover Open="@_open" AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
         <MudPaper Style="@($"max-height: {GridMaxHeight}px; overflow-y: auto; width: 100%;")">
-            <MudDataGrid T="TItem"
-                         Items="@Items"
-                         MultiSelection="true"
-                         SelectedItems="@selectedItems"
-                         SelectedItemsChanged="@OnSelectedItemsChangedInternal"
-                         SelectOnRowClick="true"
-                         Hover="true"
-                         Dense="@Dense"
-                         Height="@GridHeight"
-                         Filterable="@Filterable"
-                         FilterMode="@FilterMode"
-                         SortMode="@SortMode">
+            <MudDataGrid T="TItem" Items="@Items" MultiSelection="true" SelectedItems="@selectedItems"
+                SelectedItemsChanged="@OnSelectedItemsChangedInternal" SelectOnRowClick="true" Hover="true"
+                Dense="@Dense" Height="@GridHeight" Filterable="@Filterable" FilterMode="@FilterMode"
+                SortMode="@SortMode">
                 <Columns>
                     <SelectColumn T="TItem" />
                     @ColumnsTemplate
@@ -33,12 +23,14 @@
                 </PagerContent>
             </MudDataGrid>
         </MudPaper>
-    </ChildContent>
-</MudMenu>
+    </MudPopover>
+</MudStack>
+
 
 @code {
     private HashSet<TItem> selectedItems = new HashSet<TItem>();
     private string selectedText = string.Empty;
+    private bool _open;
 
     /// <summary>
     /// 数据源
@@ -165,14 +157,14 @@
         if (DisplayTextSelector == null)
         {
             selectedText = selectedItems.Any()
-                ? $"已选择 {selectedItems.Count} 项"
-                : string.Empty;
+            ? $"已选择 {selectedItems.Count} 项"
+            : string.Empty;
         }
         else
         {
             selectedText = selectedItems.Any()
-                ? string.Join(Separator, selectedItems.Select(DisplayTextSelector))
-                : string.Empty;
+            ? string.Join(Separator, selectedItems.Select(DisplayTextSelector))
+            : string.Empty;
         }
     }
 
