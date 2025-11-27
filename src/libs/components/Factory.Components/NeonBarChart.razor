@@ -1,0 +1,13 @@
+@using MudBlazor
+<NeonCard Title="@Title">
+    <MudChart ChartType="ChartType.Bar" Labels="@Labels" Class="mt-2">
+        <MudChartSeries Name="@SeriesName" Data="@Data" Color="Color.Primary" />
+    </MudChart>
+</NeonCard>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Bar Chart";
+    [Parameter] public string SeriesName { get; set; } = "Series";
+    [Parameter] public string[] Labels { get; set; } = Array.Empty<string>();
+    [Parameter] public double[] Data { get; set; } = Array.Empty<double>();
+}

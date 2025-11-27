@@ -4,6 +4,7 @@
 @using HmiInspection.Models
 @namespace MudBlazorLab.Components.Components.InspectionPanel
 @using MudBlazor
+@using System.Linq
 @inject IInspectionConfigService ConfigSvc
 @inject InspectionSystem.Data.InspectionDb Db
 
@@ -31,7 +32,7 @@
                 </MudChip>
             </CellTemplate>
         </PropertyColumn>
-        <PropertyColumn T="InspectionForm" TProperty="DateTime?" Property="@(x => x.TxnTime)" Title="创建时间"/>
+        <PropertyColumn T="InspectionForm" TProperty="DateTime?" Property="@(x => x.TxnTime)" Title="创建时间" />
         <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.CreateUser)" Title="创建人" />
         <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormNo)" Title="操作">
             <CellTemplate Context="doc">
@@ -54,10 +55,10 @@
         <MudStack Spacing="2">
             <MudAutocomplete T="string" @bind-Value="Form.Template" Label="模板" Placeholder="模板"
                 SearchFunc="SearchTemplates" CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
-            <MudAutocomplete T="string" @bind-Value="Form.Line" Label="产线" Placeholder="产线" SearchFunc="SearchLines"
+            <MudAutocomplete T="string" @bind-Value="FormLine" Label="产线" Placeholder="产线" SearchFunc="SearchLines"
                 CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
 
-            <GridDataGridSelect TItem="fab_work_order" Items="@_workOrderOptions" @bind-SelectedItems="Form.WorkOrders"
+            <GridDataGridSelect TItem="fab_work_order" Items="@FilteredWorkOrderOptions" @bind-SelectedItems="Form.WorkOrders"
                 DisplayTextSelector="@(p => p.WorkOrder)" Label="工单">
                 <ColumnsTemplate>
                     <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.ProductName)"
@@ -84,16 +85,16 @@
     </DialogActions>
 </MudDialog>
 
-<ObjectsPanel Visible="_openObjectsPanel" Form="_currentForm" OnClose="CloseObjectsPanel" />
+<ObjectsPanel Visible="_openObjectsPanel" Form="_currentForm" OnClose="CloseObjectsPanel" FormType="FormTable.开班点检单" />
 
 @code {
-    [Parameter] public string FormType { get; set; } = string.Empty;
-    private MudDataGrid<InspectionForm> InspectionDocGrid;  
+    [Parameter] public FormTable FormType { get; set; } 
+    private MudDataGrid<InspectionForm> InspectionDocGrid;
     int _pageSize = 10;
     int[] _pageOptions = new[] { 10, 20, 50 };
     bool _dlgDoc;
     InspectionForm? _currentForm;
-    List<fab_work_order> _workOrderOptions = new();
+    List<fab_work_order> _workOrderOptionsAll = new();
 
     private sealed class DocFormState
     {
@@ -126,27 +127,29 @@
     async Task NewDoc()
     {
         Form = new();
-        var prefix = DateTime.Now.ToString("yyyyMMdd");
+        var typeCode = GetFormTypeCode(FormType);
+        var datePart = DateTime.Now.ToString("yyyyMMdd");
+        var prefix = $"{typeCode}-{datePart}";
         var countToday = await Db.Db.Queryable<InspectionForm>().Where(x => x.FormNo.StartsWith(prefix)).CountAsync();
         Form.DocNumber = prefix + "." + (countToday + 1).ToString("D4");
         _dlgDoc = true;
-        _workOrderOptions = (await ConfigSvc.GetWorkOrderNamesAsync()).ToList();
+        _workOrderOptionsAll = (await ConfigSvc.GetWorkOrderNamesAsync()).ToList();
     }
 
     async Task SaveDoc()
     {
         var doc = new InspectionForm
-        {
-            Sysid = Guid.NewGuid(),
-            FormTemplateName = Form.Template,
-            FormNo = Form.DocNumber,
-            FormType = FormType,
-            ProductName = Form.Line,
-            WorkCenter = string.Join(",", Form.WorkOrders.Select(x => x.WorkOrder)),
-            CreateUser = Form.Creator,
-            TxnTime = Form.CreatedAt ?? DateTime.Now,
-            Status = "创建"
-        };
+            {
+                Sysid = Guid.NewGuid(),
+                FormTemplateName = Form.Template,
+                FormNo = Form.DocNumber,
+                FormType = FormType.ToString(),
+                ProductName = Form.Line,
+                WorkCenter = string.Join(",", Form.WorkOrders.Select(x => x.WorkOrder)),
+                CreateUser = Form.Creator,
+                TxnTime = Form.CreatedAt ?? DateTime.Now,
+                Status = "创建"
+            };
         Db.Db.Insertable(doc).ExecuteCommand();
         _currentForm = doc;
         if (Form.AutoStartAndCreateObject)
@@ -157,20 +160,27 @@
 
         var templateObj = await ConfigSvc.GetTemplateObjectsAsync(Form.Template);
         var lstObj = templateObj.Select(x => new InspectionFormObject
-        {
-            Sysid = Guid.NewGuid(),
-            FormSysid = doc.Sysid,
-            ObjectName = x.ObjectName,
-            ObjectType = x.ObjectType,
-            CheckResult = InspectionResult.OK.ToString()
-        }).ToList();
+            {
+                Sysid = Guid.NewGuid(),
+                FormSysid = doc.Sysid,
+                ObjectName = x.ObjectName,
+                ObjectType = x.ObjectType,
+                CheckResult = InspectionResult.OK.ToString()
+            }).ToList();
         Db.Db.Insertable(lstObj).ExecuteCommand();
 
         await InspectionDocGrid.ReloadServerData();
     }
 
-    async Task<IEnumerable<string>> SearchTemplates(string value, CancellationToken _) => await Filter(await
-    ConfigSvc.GetTemplateNamesAsync(), value);
+    async Task<IEnumerable<string>> SearchTemplates(string value, CancellationToken _)
+    {
+        var list = await Db.Db.Queryable<InspectionFormTemplate>()
+            .Where(x => x.FormType == FormType.ToString())
+            .Select(x => x.FormTemplateName)
+            .Distinct()
+            .ToListAsync();
+        return await Filter(list, value);
+    }
     async Task<IEnumerable<string>> SearchLines(string value, CancellationToken _) => await Filter(await
     ConfigSvc.GetProductionLineNamesAsync(), value);
     async Task<IEnumerable<string>> SearchCreators(string value, CancellationToken _) => await Filter(await
@@ -219,23 +229,39 @@
         var predicate = FilterHelper<InspectionForm>.BuildExpression(filters);
         using var repo = new Repository<InspectionForm>(Db.Db);
         var result = await repo.LoadGridDataAsync(
-            state,
-            selector: x => x,
-            orderSelector: sort => sort switch
-            {
-                nameof(InspectionForm.FormTemplateName) => o => o.FormTemplateName,
-                nameof(InspectionForm.FormNo) => o => o.FormNo,
-                nameof(InspectionForm.WorkCenter) => o => o.WorkCenter,
-                nameof(InspectionForm.ProductName) => o => o.ProductName,
-                nameof(InspectionForm.Status) => o => o.Status,
-                nameof(InspectionForm.TxnTime) => o => o.TxnTime,
-                nameof(InspectionForm.CreateUser) => o => o.CreateUser,
-                _ => o => o.TxnTime
-            },
-            filter: predicate
+        state,
+        selector: x => x,
+        orderSelector: sort => FilterHelper<InspectionForm>.BuildOrderSelector(sort),
+        filter: predicate
         );
         if (_currentForm == null) _currentForm = result.Items.FirstOrDefault();
         return result;
     }
 
+    static string GetFormTypeCode(FormTable formType) => formType switch
+    {
+        FormTable.来料检验单 => "IQC",
+        FormTable.过程检验单 => "PQC",
+        FormTable.出货检验单 => "OQC",
+        FormTable.开班点检单 => "SHIFT",
+        FormTable.设备点检单 => "EQP",
+        _ => "GEN"
+    };
+
+    IEnumerable<fab_work_order> FilteredWorkOrderOptions => string.IsNullOrWhiteSpace(Form.Line)
+        ? _workOrderOptionsAll
+        : _workOrderOptionsAll.Where(x => x.ProductName == Form.Line);
+
+    string FormLine
+    {
+        get => Form.Line;
+        set
+        {
+            Form.Line = value;
+            Form.WorkOrders.Clear();
+        }
+    }
+
+
 }
+

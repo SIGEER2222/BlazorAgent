@@ -13,7 +13,7 @@ public class InMemoryInspectionConfigService : IInspectionConfigService {
     => _db.Db.Queryable<InspectionFormTemplate>().Select(x => x.FormTemplateName).Distinct().ToListAsync();
 
   public Task<List<string>> GetProductionLineNamesAsync()
-    => _db.Db.Queryable<InspectionForm>().Select(x => x.ProductName).Distinct().ToListAsync();
+    => _db.Db.Queryable<mom_product_revision>().Where(x=>x.RevisionState == "Active").Select(x => x.Name).Distinct().ToListAsync();
 
   public Task<List<fab_work_order>> GetWorkOrderNamesAsync()
     => _db.Db.Queryable<fab_work_order>().ToListAsync();

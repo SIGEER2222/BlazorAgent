@@ -1,0 +1,23 @@
+<NeonCard Title="@Title">
+    <MudStack Spacing="1">
+        <MudStack Direction="Row" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIcon Icon="@Icon" Color="Color.Primary" Size="Size.Large" />
+            <span class="neon-sub">@Subtitle</span>
+        </MudStack>
+        <div class="neon-value">@Value</div>
+        @if (Trend is not null)
+        {
+            <div class="neon-sub @(Trend!.Value>=0?"neon-up":"neon-down")">
+                @(Trend!.Value>=0?"↑":"↓") @Math.Abs(Trend!.Value)@("%")
+            </div>
+        }
+    </MudStack>
+</NeonCard>
+
+@code {
+    [Parameter] public string Title { get; set; } = "指标";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; } = Icons.Material.Rounded.AutoMode;
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public double? Trend { get; set; }
+}

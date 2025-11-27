@@ -1,0 +1,13 @@
+<div class="neon-card pa-4">
+    <MudStack AlignItems="AlignItems.Center" Spacing="2">
+        <div class="neon-title">@Title</div>
+        <div class="neon-gauge" style="--pct:@Percent%">
+            <div class="val">@Percent%</div>
+        </div>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Gauge";
+    [Parameter] public int Percent { get; set; } = 65;
+}

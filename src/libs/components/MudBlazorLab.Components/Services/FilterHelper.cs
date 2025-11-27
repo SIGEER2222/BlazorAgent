@@ -1,5 +1,7 @@
+using HmiInspection.Models;
 using MudBlazor;
 using System.Linq.Expressions;
+using System.Reflection;
 
 public static class FilterHelper<T> {
   public static Expression<Func<T, bool>> BuildExpression(List<IFilterDefinition<T>> filters) {
@@ -40,4 +42,15 @@ public static class FilterHelper<T> {
       return node == _oldParameter ? _newParameter : base.VisitParameter(node);
     }
   }
+
+  public static Expression<Func<T, object>> BuildOrderSelector(string name) {
+    var p = Expression.Parameter(typeof(T), "o");
+    MemberInfo? member = (System.Reflection.MemberInfo?)typeof(T).GetProperty(name) ?? typeof(T).GetField(name);
+    Expression prop = member is PropertyInfo pi
+      ? Expression.Property(p, pi)
+      : Expression.Field(p, (FieldInfo)member);
+    var body = Expression.Convert(prop, typeof(object));
+    return Expression.Lambda<Func<T, object>>(body, p);
+  }
+
 }

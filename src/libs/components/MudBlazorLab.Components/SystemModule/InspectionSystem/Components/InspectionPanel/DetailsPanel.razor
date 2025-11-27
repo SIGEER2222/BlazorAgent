@@ -9,6 +9,7 @@
 @inject InspectionSystem.Data.InspectionDb Db
 
 <MudOverlay @bind-Visible="@Visible" DarkBackground="true" Class="d-flex align-center justify-center">
+
     <MudPaper Elevation="24" Class="pa-4">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudText Typo="Typo.h6">详情：@(CurrentObject?.ObjectName)</MudText>
@@ -18,25 +19,44 @@
                 StartIcon="@Icons.Material.Filled.AddTask" OnClick="NewDetail">新增详情项</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Close">关闭</MudButton>
         </MudStack>
-        <MudDataGrid @ref="InspectionDetailGrid" T="InspectionFormObjectSampleItem" Items="@_details" Bordered="true"
-            Dense="true" Hover="true" Filterable="true" FixedHeader="true" Height="60vh" RowsPerPage="@_detailPageSize"
-            SortMode="SortMode.Multiple">
-            <Columns>
-                <PropertyColumn T="InspectionFormObjectSampleItem" TProperty="string" Property="@(x => x.ItemName)"
-                    Title="检查项" />
-                <PropertyColumn T="InspectionFormObjectSampleItem" TProperty="string" Property="@(x => x.ItemDescription)"
-                    Title="检查描述" />
-                <PropertyColumn T="InspectionFormObjectSampleItem" TProperty="string" Property="@(x => x.Unit)"
-                    Title="单位" />
-                <PropertyColumn T="InspectionFormObjectSampleItem" TProperty="decimal?" Property="@(x => x.Value)"
-                    Title="数值" />
-                <PropertyColumn T="InspectionFormObjectSampleItem" TProperty="string" Property="@(x => x.CheckResult)"
-                    Title="结果" />
-            </Columns>
-            <PagerContent>
-                <MudDataGridPager T="InspectionFormObjectSampleItem" PageSizeOptions="@_detailPageOptions" />
-            </PagerContent>
-        </MudDataGrid>
+        <MudGrid Class="mt-2">
+            <MudItem xs="12" md="4">
+                <MudDataGrid @ref="SamplesGrid" T="InspectionFormObjectSample" Items="@_samples" Bordered="true"
+                    Dense="true" Hover="true" Filterable="true" FixedHeader="true" Height="60vh"
+                    RowsPerPage="@_detailPageSize" RowClick="OnSampleRowClick" SortMode="SortMode.Multiple">
+                    <Columns>
+                        <PropertyColumn T="InspectionFormObjectSample" TProperty="string"
+                            Property="@(x => x.SampleBatchNo)" Title="批次号" />
+                        <PropertyColumn T="InspectionFormObjectSample" TProperty="string"
+                            Property="@(x => x.CheckResult)" Title="样本结果" />
+                    </Columns>
+                    <PagerContent>
+                        <MudDataGridPager T="InspectionFormObjectSample" PageSizeOptions="@_detailPageOptions" />
+                    </PagerContent>
+                </MudDataGrid>
+            </MudItem>
+            <MudItem xs="12" md="8">
+                <MudDataGrid @ref="InspectionDetailGrid" T="InspectionFormObjectSampleItem" Items="@_details"
+                    Bordered="true" Dense="true" Hover="true" Filterable="true" FixedHeader="true" Height="60vh"
+                    RowsPerPage="@_detailPageSize" SortMode="SortMode.Multiple">
+                    <Columns>
+                        <PropertyColumn T="InspectionFormObjectSampleItem" TProperty="string"
+                            Property="@(x => x.ItemName)" Title="检查项" />
+                        <PropertyColumn T="InspectionFormObjectSampleItem" TProperty="string"
+                            Property="@(x => x.ItemDescription)" Title="检查描述" />
+                        <PropertyColumn T="InspectionFormObjectSampleItem" TProperty="string" Property="@(x => x.Unit)"
+                            Title="单位" />
+                        <PropertyColumn T="InspectionFormObjectSampleItem" TProperty="decimal?"
+                            Property="@(x => x.Value)" Title="数值" />
+                        <PropertyColumn T="InspectionFormObjectSampleItem" TProperty="string"
+                            Property="@(x => x.CheckResult)" Title="结果" />
+                    </Columns>
+                    <PagerContent>
+                        <MudDataGridPager T="InspectionFormObjectSampleItem" PageSizeOptions="@_detailPageOptions" />
+                    </PagerContent>
+                </MudDataGrid>
+            </MudItem>
+        </MudGrid>
     </MudPaper>
 </MudOverlay>
 
@@ -51,9 +71,10 @@
                         OnClick="AddDetailRow">新增一行</MudButton>
                 </MudStack>
 
+                <MudTextField @bind-Value="_sampleBatchNo" Label="批次号(可空)" Placeholder="例如：BATCH-2025-001" />
+
                 <MudTable Items="@_bulkDetails" Dense="true" Hover="true">
                     <HeaderContent>
-                        <MudTh>检查对象</MudTh>
                         <MudTh>检查项</MudTh>
                         <MudTh>描述</MudTh>
                         <MudTh>单位</MudTh>
@@ -62,17 +83,17 @@
                     </HeaderContent>
                     <RowTemplate Context="row">
                         <MudTd>
-                            <MudText>@CurrentObject?.ObjectName</MudText>
-                        </MudTd>
-                        <MudTd>
                             <MudAutocomplete T="string" @bind-Value="@row.ItemName" SearchFunc="SearchCheckItems"
                                 CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
                         </MudTd>
                         <MudTd>
-                            <MudText>@row.ItemDescription</MudText>
+                            <MudAutocomplete T="string" @bind-Value="row.ItemDescription"
+                                SearchFunc="SearchItemDescriptions" CoerceText="true" CoerceValue="true"
+                                Clearable="true" Dense="true" />
                         </MudTd>
                         <MudTd>
-                            <MudText>@row.Unit</MudText>
+                            <MudAutocomplete T="string" @bind-Value="row.Unit" SearchFunc="SearchUnits"
+                                CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
                         </MudTd>
                         <MudTd>
                             <MudNumericField @bind-Value="row.Value" Dense="true" Required="true" />
@@ -97,145 +118,327 @@
 
 @code {
     [Parameter] public bool Visible { get; set; }
+
     [Parameter] public InspectionForm? CurrentDoc { get; set; }
+
     [Parameter] public InspectionFormObject? CurrentObject { get; set; }
+
     [Parameter] public EventCallback OnClose { get; set; }
 
+
+
     private MudDataGrid<InspectionFormObjectSampleItem> InspectionDetailGrid;
+
+    private MudDataGrid<InspectionFormObjectSample> SamplesGrid;
+
     List<InspectionFormObjectSampleItem> _details = new();
+
+    List<InspectionFormObjectSample> _samples = new();
+
     int _detailPageSize = 15;
+
     int[] _detailPageOptions = new[] { 15, 30, 60 };
+
     bool _dlgDetail;
+
     Guid _targetObjectId;
+
     List<string> _configuredItems = new();
+
+    List<string> _configuredUnits = new();
+
+    List<string> _configuredDescriptions = new();
+
     List<InspectionFormObjectSampleItem> _bulkDetails = new();
+
     readonly DialogOptions _dialogOptions = new() { FullWidth = true, MaxWidth = MaxWidth.ExtraLarge };
+
+    string? _sampleBatchNo;
+
+
+
 
 
     protected override async Task OnParametersSetAsync()
+
     {
+
         if (Visible && CurrentObject != null)
+
         {
+
             _targetObjectId = CurrentObject.Sysid;
+
             await ReloadDetails();
+
             await LoadConfiguredItems();
+
         }
+
     }
+
+
 
     async Task ReloadDetails()
+
     {
-        var sample = Db.Db.Queryable<InspectionFormObjectSample>().Where(x => x.FormObjectSysid == CurrentObject.Sysid).ToList();
-        var lst = Db.Db.Queryable<InspectionFormObjectSampleItem>().Where(x => sample.Select(y=>y.Sysid).Contains( x.FormObjectSampleSysid )).ToList();
-        _details = lst;
+
+        _samples = Db.Db.Queryable<InspectionFormObjectSample>().Where(x => x.FormObjectSysid == CurrentObject.Sysid).ToList();
+
+        if (_selectedSampleSysid == Guid.Empty)
+
+            _selectedSampleSysid = _samples.FirstOrDefault()?.Sysid ?? Guid.Empty;
+
+        _details = _selectedSampleSysid == Guid.Empty
+
+        ? new List<InspectionFormObjectSampleItem>()
+
+        : Db.Db.Queryable<InspectionFormObjectSampleItem>().Where(x => x.FormObjectSampleSysid ==
+        _selectedSampleSysid).ToList();
+
     }
+
+
 
     async Task LoadConfiguredItems()
+
     {
+
         _configuredItems = new List<string>();
+
+        _configuredUnits = new List<string>();
+
+        _configuredDescriptions = new List<string>();
+
         if (CurrentDoc == null || CurrentObject == null) return;
-        var items = await ConfigSvc.GetCheckItemsAsync(CurrentDoc.FormTemplateName, CurrentObject.ObjectType);
-        _configuredItems = items.ToList();
+
+        var items = await ConfigSvc.GetTemplateObjectItemsAsync(CurrentDoc.FormTemplateName, CurrentObject.ObjectName);
+
+        _configuredItems = items.Select(x => x.ItemName).Distinct().ToList();
+
+        _configuredUnits = items.Select(x => x.Unit).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+
+        _configuredDescriptions = items.Select(x => x.ItemDescription).Where(x =>
+        !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
+
         StateHasChanged();
+
     }
+
+
 
     async Task NewDetail()
+
     {
-        if (CurrentObject != null && (_details == null || _details.Count == 0))
-            _bulkDetails = await BuildDefaultInspectionFormObjectSampleItemsForObject(CurrentObject);
-        else
-            _bulkDetails = new List<InspectionFormObjectSampleItem>();
+
+        if (CurrentObject == null || CurrentDoc == null) return;
+
+        _sampleBatchNo = null;
+
+        _bulkDetails = await BuildDefaultInspectionFormObjectSampleItemsForObject(CurrentObject);
+
         _dlgDetail = true;
+
     }
 
+
+
     bool CanSaveDetail => CurrentDoc != null && CurrentDoc.Status == "开始" && _targetObjectId != Guid.Empty &&
+
     _bulkDetails.All(x => !string.IsNullOrWhiteSpace(x.ItemName)) &&
+
     _bulkDetails.All(x => !string.IsNullOrWhiteSpace(x.CheckResult));
 
+
+
     async Task SaveDetail()
+
     {
-        var lstSample = Db.Db.Queryable<InspectionFormObjectSample>().Where(x => x.FormObjectSysid == CurrentObject.Sysid).ToList();
-        var lstItem = Db.Db.Queryable<InspectionFormObjectSampleItem>().Where(x => lstSample.Select(y => y.Sysid).Contains(x.FormObjectSampleSysid)).ToList();
 
-        var allOK = lstItem.All(x => x.CheckResult == "OK") && _bulkDetails.All(x => x.CheckResult == "OK");
+        if (CurrentObject == null) { _dlgDetail = false; return; }
 
-        var sample = Db.Db.Queryable<InspectionFormObjectSample>().Where(x => x.FormObjectSysid == CurrentObject.Sysid).First();
-        var newSample = new InspectionFormObjectSample
-        {
-            Sysid = Guid.NewGuid(),
-            FormObjectSysid = CurrentObject.Sysid,
-            CheckResult = allOK ? "NG" : "OK"
-        };
-        if (sample == null)
-        {
-            sample = newSample;
-            Db.Db.Insertable(sample).ExecuteCommand();
-        }
+        var sample = new InspectionFormObjectSample
+
+            {
+
+                Sysid = Guid.NewGuid(),
+
+                FormObjectSysid = CurrentObject.Sysid,
+
+                CheckResult = "OK",
+
+                SampleBatchNo = _sampleBatchNo,
+
+            };
+
+        Db.Db.Insertable(sample).ExecuteCommand();
+
+
 
         _bulkDetails.ForEach(x => x.FormObjectSampleSysid = sample.Sysid);
+
         Db.Db.Insertable(_bulkDetails).ExecuteCommand();
 
 
+
+        var allOK = _bulkDetails.All(x => x.CheckResult == "OK");
+
         sample.CheckResult = allOK ? "OK" : "NG";
-        CurrentObject.CheckResult = allOK ? "OK" : "NG";
+
+        CurrentObject.CheckResult = sample.CheckResult;
 
         await Db.Db.Updateable(CurrentObject).ExecuteCommandAsync();
+
         await Db.Db.Updateable(sample).ExecuteCommandAsync();
 
+
+
+        _selectedSampleSysid = sample.Sysid;
+
         _dlgDetail = false;
+
         await ReloadDetails();
+
     }
+
+
 
     async Task<IEnumerable<string>> SearchCheckObjects(string value, CancellationToken _)
+
     {
-        if (CurrentDoc == null) return Enumerable.Empty<string>();
-        return await Filter(await ConfigSvc.GetCheckObjectsAsync(CurrentDoc.FormTemplateName, CurrentObject?.ObjectType ??
-        string.Empty), value);
-    }
-    async Task<IEnumerable<string>> SearchCheckItems(string value, CancellationToken _)
-    {
+
         if (CurrentDoc == null) return Enumerable.Empty<string>();
 
-        var sample = Db.Db.Queryable<InspectionFormObjectSample>().Where(x => x.FormObjectSysid == CurrentObject.Sysid).ToList();
-        var lst = Db.Db.Queryable<InspectionFormObjectSampleItem>().Where(x => sample.Select(y => y.Sysid).Contains(x.FormObjectSampleSysid)).ToList();
-        return lst.Select(x => x.ItemName).Distinct();
+        return await Filter(await ConfigSvc.GetCheckObjectsAsync(CurrentDoc.FormTemplateName, CurrentObject?.ObjectType ??
+
+        string.Empty), value);
+
     }
-    static Task<IEnumerable<string>> Filter(IEnumerable<string> src, string value)
+
+    async Task<IEnumerable<string>> SearchCheckItems(string value, CancellationToken _)
+
     {
-        var v = value ?? string.Empty;
-        var items = src.Where(x => string.IsNullOrEmpty(v) || x.Contains(v,
-        StringComparison.OrdinalIgnoreCase)).Take(10).ToList();
-        return Task.FromResult(items.AsEnumerable());
+
+        if (CurrentDoc == null) return Enumerable.Empty<string>();
+
+
+
+        return Filter(_configuredItems, value).Result;
+
     }
+
+    async Task<IEnumerable<string>> SearchUnits(string value, CancellationToken _)
+
+    {
+
+        if (CurrentDoc == null) return Enumerable.Empty<string>();
+
+        return Filter(_configuredUnits, value).Result;
+
+    }
+
+    async Task<IEnumerable<string>> SearchItemDescriptions(string value, CancellationToken _)
+
+    {
+
+        if (CurrentDoc == null) return Enumerable.Empty<string>();
+
+        return Filter(_configuredDescriptions, value).Result;
+
+    }
+
+    static Task<IEnumerable<string>> Filter(IEnumerable<string> src, string value)
+
+    {
+
+        var v = value ?? string.Empty;
+
+        var items = src.Where(x => string.IsNullOrEmpty(v) || x.Contains(v,
+
+        StringComparison.OrdinalIgnoreCase)).Take(10).ToList();
+
+        return Task.FromResult(items.AsEnumerable());
+
+    }
+
+
 
     async Task<List<InspectionFormObjectSampleItem>>
+
     BuildDefaultInspectionFormObjectSampleItemsForObject(InspectionFormObject? obj)
+
     {
+
         var list = new List<InspectionFormObjectSampleItem>();
 
+
+
         var lstItem = await ConfigSvc.GetTemplateObjectItemsAsync(CurrentDoc.FormTemplateName, CurrentObject.ObjectName);
+
         list = lstItem.Select(x => new InspectionFormObjectSampleItem
-        {
-            Sysid = Guid.NewGuid(),
-            ItemName = x.ItemName,
-            Unit = x.Unit,
-            Value = null,
-            ItemDescription = x.ItemDescription,
-            CheckResult = "OK"
-        }).ToList();
+
+            {
+
+                Sysid = Guid.NewGuid(),
+
+                ItemName = x.ItemName,
+
+                Unit = x.Unit,
+
+                Value = null,
+
+                ItemDescription = x.ItemDescription,
+
+                CheckResult = "OK"
+
+            }).ToList();
+
         return list;
+
     }
+
+
+
 
 
     void AddDetailRow()
+
     {
+
         _bulkDetails.Add(new InspectionFormObjectSampleItem
+
         {
 
+
+
         });
+
     }
 
+
+
     void Close()
+
     {
+
         OnClose.InvokeAsync();
+
+    }
+
+
+
+    Guid _selectedSampleSysid;
+
+
+
+    void OnSampleRowClick(DataGridRowClickEventArgs<InspectionFormObjectSample> e)
+
+    {
+
+        _selectedSampleSysid = e.Item.Sysid;
+
+        _details = Db.Db.Queryable<InspectionFormObjectSampleItem>().Where(x => x.FormObjectSampleSysid ==
+        _selectedSampleSysid).ToList();
+
     }
 }

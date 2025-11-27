@@ -1,0 +1,13 @@
+<div class="neon-card pa-4">
+    <div class="neon-title">
+        @Title
+    </div>
+    <div>
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

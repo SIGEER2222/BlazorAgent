@@ -1,0 +1,40 @@
+@page "/dashboard/sci-fi"
+@inject Factory.Web.Jincheng.JinchengDataStore Store
+
+<PageTitle>Sci‑Fi Dashboard</PageTitle>
+
+<MudContainer Class="neon-bg pa-4">
+    <div class="neon-row">
+        <div class="neon-col-3">
+            <StatMetric Title="当前警情数" Subtitle="日环比" Icon="@Icons.Material.Filled.Warning" Value="@_data.AlertCount.ToString()" Trend="3" />
+        </div>
+        <div class="neon-col-3">
+            <StatMetric Title="拥堵指数" Subtitle="平均车速" Icon="@Icons.Material.Filled.Speed" Value="@_data.CongestionIndex.ToString("0.0")" />
+        </div>
+        <div class="neon-col-3">
+            <NeonGauge Title="系统健康" Percent="72" />
+        </div>
+        <div class="neon-col-3">
+            <StatMetric Title="平均车速" Subtitle="KM/H" Icon="@Icons.Material.Filled.DirectionsCar" Value="@_data.AvgSpeedKmH.ToString()" />
+        </div>
+        <div class="neon-col-6">
+            <NeonBarChart Title="收费站收费量" SeriesName="收费量" Labels="@_labels" Data="@_dataSeries" />
+        </div>
+        <div class="neon-col-6">
+            <NeonBarChart Title="交通工具流量" SeriesName="流量" Labels="@_labels2" Data="@_dataSeries2" />
+        </div>
+    </div>
+</MudContainer>
+
+@code {
+    private Factory.Web.Jincheng.JinchengDashboardData _data = new();
+    private string[] _labels = new[] { "A", "B", "C", "D", "E" };
+    private double[] _dataSeries = new[] { 120d, 140d, 180d, 90d, 160d };
+    private string[] _labels2 = new[] { "客车", "货车", "公交", "出租" };
+    private double[] _dataSeries2 = new[] { 55d, 72d, 30d, 18d };
+
+    protected override void OnInitialized()
+    {
+        _data = Store.Get();
+    }
+}
