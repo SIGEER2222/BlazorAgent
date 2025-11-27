@@ -196,3 +196,60 @@ public class InspectionFormObjectSampleItem {
   [SugarColumn(ColumnDataType = "longtext,text,clob", ColumnName = "ItemDescription", IsNullable = true)]
   public string ItemDescription { get; set; }
 }
+
+/// <summary>
+/// 检验表单对象样品明细（展平）
+/// </summary>
+[SugarTable("fab_hmi_Inspection_form_Object_Sample_Flat")]
+public class InspectionFormObjectSampleFlat {
+  [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
+  public Guid Sysid { get; set; }
+
+  /// <summary>
+  /// 表单对象sysid
+  /// </summary>
+  [SugarColumn(ColumnName = "formObjectSysid")]
+  public Guid FormObjectSysid { get; set; }
+
+  /// <summary>
+  /// 批次(可为空)
+  /// </summary>
+  [SugarColumn(Length = 40, ColumnName = "SampleBatchNo", IsNullable = true)]
+  public string? SampleBatchNo { get; set; }
+
+  /// <summary>
+  /// 载具名称(可为空)
+  /// </summary>
+  [SugarColumn(Length = 40, ColumnName = "CarrierName", IsNullable = true)]
+  public string? CarrierName { get; set; }
+
+  /// <summary>
+  /// 检查项
+  /// </summary>
+  [SugarColumn(Length = 40, ColumnName = "itemName")]
+  public string ItemName { get; set; }
+
+  /// <summary>
+  /// 数值
+  /// </summary>
+  [SugarColumn(ColumnName = "Value", IsNullable = true)]
+  public decimal? Value { get; set; }
+
+  /// <summary>
+  /// 单位
+  /// </summary>
+  [SugarColumn(Length = 40, ColumnName = "Unit", IsNullable = true)]
+  public string? Unit { get; set; }
+
+  /// <summary>
+  /// 检验结果
+  /// </summary>
+  [SugarColumn(Length = 40, ColumnName = "CheckResult")]
+  public string CheckResult { get; set; }
+
+  /// <summary>
+  /// 描述
+  /// </summary>
+  [SugarColumn(ColumnDataType = "longtext,text,clob", ColumnName = "ItemDescription", IsNullable = true)]
+  public string? ItemDescription { get; set; }
+}

@@ -9,5 +9,6 @@ public class InspectionDb {
 
   public InspectionDb(string connectionString) {
     Db = SqlSugarInit.Db(connectionString);
+    Db.CodeFirst.InitTables(typeof(InspectionFormObjectSampleFlat));
   }
 }
