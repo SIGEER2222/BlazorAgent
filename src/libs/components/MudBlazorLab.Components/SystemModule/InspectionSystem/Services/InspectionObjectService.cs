@@ -22,13 +22,21 @@ public class InspectionObjectService : IInspectionObjectService
     public async Task<List<InspectionObjectView>> GetObjectViewsAsync(InspectionForm form)
     {
         var objs = await GetObjectsAsync(form.Sysid);
+        var firstSamplesRaw = _db.Db.Queryable<InspectionFormObjectSampleFlat>()
+            .Where(s => objs.Select(o => o.Sysid).Contains(s.FormObjectSysid))
+            .OrderBy(s => s.FormObjectSysid)
+            .ToList();
+        var firstSamples = firstSamplesRaw
+            .GroupBy(x => x.FormObjectSysid)
+            .ToDictionary(g => g.Key, g => (g.First().CarrierName, g.First().SampleBatchNo));
+
         var views = objs.Select(x => new InspectionObjectView
         {
             Sysid = x.Sysid,
             ObjectType = x.ObjectType,
             ObjectName = x.ObjectName,
-            CarrierName = x.CarrierName,
-            SampleBatchNo = x.SampleBatchNo,
+            CarrierName = firstSamples.TryGetValue(x.Sysid, out var s) ? s.CarrierName : null,
+            SampleBatchNo = firstSamples.TryGetValue(x.Sysid, out var s2) ? s2.SampleBatchNo : null,
             TotalQuantity = x.TotalQuantity,
             ActualSamplingRatio = x.ActualSamplingRatio,
             SampleQuantity = x.SampleQuantity,
@@ -65,11 +73,22 @@ public class InspectionObjectService : IInspectionObjectService
             FormSysid = form.Sysid,
             ObjectType = objectType,
             ObjectName = objectName,
-            CarrierName = carrierName,
-            SampleBatchNo = batchNo,
             CheckResult = "OK"
         };
         _db.Db.Insertable(obj).ExecuteCommand();
+        if (!string.IsNullOrWhiteSpace(carrierName) || !string.IsNullOrWhiteSpace(batchNo))
+        {
+            var flat = new InspectionFormObjectSampleFlat
+            {
+                Sysid = Guid.NewGuid(),
+                FormObjectSysid = obj.Sysid,
+                CarrierName = carrierName,
+                SampleBatchNo = batchNo,
+                ItemName = string.Empty,
+                CheckResult = "OK"
+            };
+            _db.Db.Insertable(flat).ExecuteCommand();
+        }
         return Task.FromResult(obj);
     }
 
@@ -93,7 +112,6 @@ public class InspectionObjectService : IInspectionObjectService
             FormSysid = form.Sysid,
             ObjectType = objectType,
             ObjectName = objectName,
-            SampleBatchNo = batchNo,
             TotalQuantity = totalQty,
             ActualSamplingRatio = samplingRatio,
             SampleQuantity = sampleQty,
@@ -101,6 +119,18 @@ public class InspectionObjectService : IInspectionObjectService
             CheckResult = "OK"
         };
         _db.Db.Insertable(obj).ExecuteCommand();
+        if (!string.IsNullOrWhiteSpace(batchNo))
+        {
+            var flat = new InspectionFormObjectSampleFlat
+            {
+                Sysid = Guid.NewGuid(),
+                FormObjectSysid = obj.Sysid,
+                SampleBatchNo = batchNo,
+                ItemName = string.Empty,
+                CheckResult = "OK"
+            };
+            _db.Db.Insertable(flat).ExecuteCommand();
+        }
         return Task.FromResult(obj);
     }
 }

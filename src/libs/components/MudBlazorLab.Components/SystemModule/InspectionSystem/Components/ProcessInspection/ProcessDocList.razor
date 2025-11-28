@@ -1,82 +1,22 @@
-@using global::InspectionSystem.Models
-@using global::InspectionSystem.Services
-@using HmiInspection.Models
-@using MudBlazor
-@using System.Linq
-@using System
+@using MudBlazorLab.Components.SystemModule.InspectionSystem.Components.InspectionCommon
 @namespace MudBlazorLab.Components.SystemModule.InspectionSystem.Components.ProcessInspection
 
-<MudDataGrid @ref="InspectionDocGrid" T="InspectionForm" ServerData="LoadDocs" Bordered="true" Dense="true" Hover="true"
-             Filterable="true" FixedHeader="true" Height="80vh" RowsPerPage="@_pageSize" RowClick="OnDocRowClick"
-             SortMode="SortMode.Multiple">
-    <ToolBarContent>
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudText Typo="Typo.h6">过程检验表单</MudText>
-            <MudSpacer />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NewDoc"
-                       StartIcon="@Icons.Material.Filled.Add">新增表单</MudButton>
-        </MudStack>
-    </ToolBarContent>
-    <Columns>
-        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormTemplateName)" Title="模板" />
-        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormNo)" Title="单号" />
-        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.WorkCenter)" Title="工单" />
-        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.ProductName)" Title="产线" />
-        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.Status)" Title="状态">
-            <CellTemplate Context="ctx">
-                <MudChip Size="Size.Small" T="string" Color="@StatusColorText(ctx.Item.Status)"
-                         Variant="Variant.Outlined">
-                    @ctx.Item.Status
-                </MudChip>
-            </CellTemplate>
-        </PropertyColumn>
-        <PropertyColumn T="InspectionForm" TProperty="DateTime?" Property="@(x => x.TxnTime)" Title="创建时间" />
-        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.CreateUser)" Title="创建人" />
-        <PropertyColumn T="InspectionForm" TProperty="string" Property="@(x => x.FormNo)" Title="操作">
-            <CellTemplate Context="doc">
-                <MudStack Row="true" Spacing="1">
-                    <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" Size="Size.Small"
-                        Disabled="@(doc.Item.Status!="创建")" OnClick="@(()=>StartForm(doc.Item))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Stop" Color="Color.Secondary" Size="Size.Small"
-                        Disabled="@(doc.Item.Status!="开始")" OnClick="@(()=>EndForm(doc.Item))" />
-                </MudStack>
-            </CellTemplate>
-        </PropertyColumn>
-    </Columns>
-    <PagerContent>
-        <MudDataGridPager T="InspectionForm" PageSizeOptions="@_pageOptions" />
-    </PagerContent>
-</MudDataGrid>
-
-<MudDialog @bind-Visible="_dlgDoc">
-    <DialogContent>
-        <MudStack Spacing="2">
-            <MudAutocomplete T="string" @bind-Value="Form.Template" Label="模板" Placeholder="模板"
-                             SearchFunc="SearchTemplates" CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
-            <MudAutocomplete T="string" @bind-Value="FormLine" Label="产线" Placeholder="产线" SearchFunc="SearchLines"
-                             CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
-
-            <MudBlazorLab.Components.SystemModule.InspectionSystem.Components.GridDataGridSelect TItem="fab_work_order" Items="@FilteredWorkOrderOptions"
-                @bind-SelectedItems="Form.WorkOrders" DisplayTextSelector="@(p => p.WorkOrder)" Label="工单">
-                <ColumnsTemplate>
-                    <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.ProductName)" Title="产品名称" />
-                    <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.WorkOrder)" Title="工单号" />
-                    <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.PlanNedStartDate.ToString("yyyy-MM-dd"))" Title="计划开始时间" />
-                    <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.PlanNeddueDate.ToString("yyyy-MM-dd"))" Title="计划结束时间" />
-                </ColumnsTemplate>
-            </MudBlazorLab.Components.SystemModule.InspectionSystem.Components.GridDataGridSelect>
-
-            <MudTextField @bind-Value="Form.DocNumber" Label="单号" Placeholder="单号" Required="true" />
-            <MudAutocomplete T="string" @bind-Value="Form.Creator" Label="创建人" Placeholder="创建人"
-                             SearchFunc="SearchCreators" CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
-            <MudDatePicker @bind-Date="Form.CreatedAt" Label="创建日期" />
-            <MudSwitch T="bool" @bind-Value="Form.AutoStartAndCreateObject" Color="Color.Primary" Label="立即开始" />
-        </MudStack>
-    </DialogContent>
-    <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="@(() => _dlgDoc = false)">取消</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!_canSubmitDoc)" OnClick="SaveDoc">确定</MudButton>
-    </DialogActions>
-</MudDialog>
-
-<MudBlazorLab.Components.SystemModule.InspectionSystem.Components.ProcessInspection.ProcessObjectsPanel Visible="_openObjectsPanel" Form="_currentForm" OnClose="CloseObjectsPanel" />
+<DocListBase FormType="FormTable.过程检验单"
+             OnNewDocAsync="OnNewDocAsync"
+             ValidateExtra="ValidateExtra"
+             MapExtraToForm="MapExtraToForm"
+             OpenObjectsPanel="OpenObjectsPanel">
+    <ExtraFields>
+        <MudAutocomplete T="string" @bind-Value="FormLine" Label="产线" Placeholder="产线" SearchFunc="SearchLines"
+                         CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+        <MudBlazorLab.Components.SystemModule.InspectionSystem.Components.GridDataGridSelect TItem="fab_work_order" Items="@FilteredWorkOrderOptions"
+            @bind-SelectedItems="WorkOrders" DisplayTextSelector="@(p => p.WorkOrder)" Label="工单">
+            <ColumnsTemplate>
+                <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.ProductName)" Title="产品名称" />
+                <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.WorkOrder)" Title="工单号" />
+                <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.PlanNedStartDate.ToString("yyyy-MM-dd"))" Title="计划开始时间" />
+                <PropertyColumn T="fab_work_order" TProperty="string" Property="@(x => x.PlanNeddueDate.ToString("yyyy-MM-dd"))" Title="计划结束时间" />
+            </ColumnsTemplate>
+        </MudBlazorLab.Components.SystemModule.InspectionSystem.Components.GridDataGridSelect>
+    </ExtraFields>
+</DocListBase>

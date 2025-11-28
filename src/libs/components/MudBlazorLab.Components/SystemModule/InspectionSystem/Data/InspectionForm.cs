@@ -4,8 +4,7 @@ using SqlSugar;
 /// 检验表单
 /// </summary>
 [SugarTable("fab_hmi_inspection_form")]
-public class InspectionForm
-{
+public class InspectionForm {
   [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
   public Guid Sysid { get; set; }
 
@@ -68,8 +67,7 @@ public class InspectionForm
 /// 检验表单对象
 /// </summary>
 [SugarTable("fab_hmi_inspection_form_object")]
-public class InspectionFormObject
-{
+public class InspectionFormObject {
   [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
   public Guid Sysid { get; set; }
 
@@ -91,11 +89,6 @@ public class InspectionFormObject
   [SugarColumn(Length = 40, ColumnName = "objectName")]
   public string ObjectName { get; set; }
 
-  [SugarColumn(Length = 40, ColumnName = "CarrierName", IsNullable = true)]
-  public string? CarrierName { get; set; }
-
-  [SugarColumn(Length = 40, ColumnName = "SampleBatchNo", IsNullable = true)]
-  public string? SampleBatchNo { get; set; }
 
   /// <summary>
   /// 模版定义总量
@@ -132,8 +125,7 @@ public class InspectionFormObject
 /// 检验表单对象样品明细（展平）
 /// </summary>
 [SugarTable("fab_hmi_inspection_form_object_sample_flat")]
-public class InspectionFormObjectSampleFlat
-{
+public class InspectionFormObjectSampleFlat {
   [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
   public Guid Sysid { get; set; }
 
