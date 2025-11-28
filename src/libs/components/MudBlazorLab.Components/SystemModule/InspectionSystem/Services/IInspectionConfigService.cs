@@ -4,6 +4,7 @@ namespace InspectionSystem.Services;
 
 public interface IInspectionConfigService {
   Task<List<string>> GetTemplateNamesAsync();
+  Task<List<string>> GetTemplateNamesByFormTypeAsync(string formType);
   Task<List<string>> GetProductionLineNamesAsync();
   Task<List<fab_work_order>> GetWorkOrderNamesAsync();
   Task<List<string>> GetObjectTypesAsync(string templateName);

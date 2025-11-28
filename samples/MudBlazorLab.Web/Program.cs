@@ -25,17 +25,21 @@ builder.Services.AddSingleton<IPermissionService>(new PermissionService(Permissi
 builder.Services.AddSingleton<IInspectionConfigService, InMemoryInspectionConfigService>();
 var conn = $"Host=localhost;Port=54322;Database=mom;Username=postgres;Password=postgres;SearchPath=mom";
 builder.Services.AddSingleton(new InspectionDb(conn));
+builder.Services.AddSingleton<IInspectionDetailService, InspectionDetailService>();
+builder.Services.AddSingleton<IInspectionFormService, InspectionFormService>();
+builder.Services.AddSingleton<IInspectionObjectService, InspectionObjectService>();
+builder.Services.AddSingleton<IInspectionFacade, InspectionFacade>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options => {
-        options.LoginPath = "/login";
-        options.LogoutPath = "/logout";
+      options.LoginPath = "/login";
+      options.LogoutPath = "/logout";
     });
 
 builder.Services.AddAuthorization(options => {
-    options.AddPolicy(AuthPolicies.RequireAdmin, policy => policy.RequireRole("Admin"));
-    options.AddPolicy(AuthPolicies.RequireManagerOrAdmin, policy => policy.RequireRole("Manager", "Admin"));
-    options.AddPolicy(AuthPolicies.RequireEditor, policy => policy.RequireRole("Editor"));
+  options.AddPolicy(AuthPolicies.RequireAdmin, policy => policy.RequireRole("Admin"));
+  options.AddPolicy(AuthPolicies.RequireManagerOrAdmin, policy => policy.RequireRole("Manager", "Admin"));
+  options.AddPolicy(AuthPolicies.RequireEditor, policy => policy.RequireRole("Editor"));
 });
 
 builder.Services.AddHttpContextAccessor();
@@ -48,14 +52,14 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment()) {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+  app.UseExceptionHandler("/Error", createScopeForErrors: true);
+  // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+  app.UseHsts();
 }
 
 var httpsPort = app.Configuration["ASPNETCORE_HTTPS_PORT"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_HTTPS_PORT");
 if (!string.IsNullOrEmpty(httpsPort)) {
-    app.UseHttpsRedirection();
+  app.UseHttpsRedirection();
 }
 
 
@@ -68,25 +72,25 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.MapPost("/auth/login", async (HttpContext ctx, LoginDto dto) => {
-    var principal = UserService.SignIn(dto.Username, dto.Password);
-    if (principal == null) return Results.Unauthorized();
-    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-    return Results.Ok(new { name = principal.Identity!.Name });
+  var principal = UserService.SignIn(dto.Username, dto.Password);
+  if (principal == null) return Results.Unauthorized();
+  await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+  return Results.Ok(new { name = principal.Identity!.Name });
 }).DisableAntiforgery();
 
 app.MapPost("/auth/login-form", async (HttpContext ctx) => {
-    var form = await ctx.Request.ReadFormAsync();
-    var username = form["Username"].ToString();
-    var password = form["Password"].ToString();
-    var principal = UserService.SignIn(username, password);
-    if (principal == null) return Results.Redirect("/login?error=1");
-    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-    return Results.Redirect("/");
+  var form = await ctx.Request.ReadFormAsync();
+  var username = form["Username"].ToString();
+  var password = form["Password"].ToString();
+  var principal = UserService.SignIn(username, password);
+  if (principal == null) return Results.Redirect("/login?error=1");
+  await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+  return Results.Redirect("/");
 }).DisableAntiforgery();
 
 app.MapPost("/auth/logout", async (HttpContext ctx) => {
-    await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.Ok();
+  await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+  return Results.Ok();
 }).DisableAntiforgery();
 
 app.Run();

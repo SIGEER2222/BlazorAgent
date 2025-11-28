@@ -1,5 +1,3 @@
-namespace HmiInspection.Models;
-
 using SqlSugar;
 
 /// <summary>

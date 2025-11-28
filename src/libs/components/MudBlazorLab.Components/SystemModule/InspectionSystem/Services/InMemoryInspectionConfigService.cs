@@ -12,6 +12,13 @@ public class InMemoryInspectionConfigService : IInspectionConfigService {
   public Task<List<string>> GetTemplateNamesAsync()
     => _db.Db.Queryable<InspectionFormTemplate>().Select(x => x.FormTemplateName).Distinct().ToListAsync();
 
+  public Task<List<string>> GetTemplateNamesByFormTypeAsync(string formType)
+    => _db.Db.Queryable<InspectionFormTemplate>()
+      .Where(x => x.FormType == formType)
+      .Select(x => x.FormTemplateName)
+      .Distinct()
+      .ToListAsync();
+
   public Task<List<string>> GetProductionLineNamesAsync()
     => _db.Db.Queryable<mom_product_revision>().Where(x=>x.RevisionState == "Active").Select(x => x.Name).Distinct().ToListAsync();
 
