@@ -27,6 +27,11 @@ public class InspectionObjectService : IInspectionObjectService
             Sysid = x.Sysid,
             ObjectType = x.ObjectType,
             ObjectName = x.ObjectName,
+            CarrierName = x.CarrierName,
+            SampleBatchNo = x.SampleBatchNo,
+            TotalQuantity = x.TotalQuantity,
+            ActualSamplingRatio = x.ActualSamplingRatio,
+            SampleQuantity = x.SampleQuantity,
             CheckResult = x.CheckResult,
             FormTemplateName = form.FormTemplateName,
             FormNo = form.FormNo,
@@ -51,5 +56,51 @@ public class InspectionObjectService : IInspectionObjectService
         _db.Db.Insertable(obj).ExecuteCommand();
         return Task.FromResult(obj);
     }
-}
 
+    public Task<InspectionFormObject> CreateObjectAsync(InspectionForm form, string objectType, string objectName, string? carrierName, string? batchNo)
+    {
+        var obj = new InspectionFormObject
+        {
+            Sysid = Guid.NewGuid(),
+            FormSysid = form.Sysid,
+            ObjectType = objectType,
+            ObjectName = objectName,
+            CarrierName = carrierName,
+            SampleBatchNo = batchNo,
+            CheckResult = "OK"
+        };
+        _db.Db.Insertable(obj).ExecuteCommand();
+        return Task.FromResult(obj);
+    }
+
+    public Task<InspectionFormObject> CreateObjectAsync(InspectionForm form, string objectType, string objectName, string? batchNo, long? totalQty, decimal? samplingRatio)
+    {
+        decimal? templateRatio = null;
+        var tpl = _db.Db.Queryable<HmiInspection.Models.InspectionFormTemplate>().Where(x => x.FormTemplateName == form.FormTemplateName).First();
+        if (tpl != null)
+        {
+            var tObj = _db.Db.Queryable<HmiInspection.Models.InspectionFormTemplateObject>().Where(x => x.FormTemplateSysid == tpl.Sysid && x.ObjectName == objectName).First();
+            templateRatio = tObj?.SamplingRatio;
+        }
+        long? sampleQty = null;
+        if (totalQty.HasValue && samplingRatio.HasValue)
+        {
+            sampleQty = (long)Math.Ceiling(totalQty.Value * samplingRatio.Value);
+        }
+        var obj = new InspectionFormObject
+        {
+            Sysid = Guid.NewGuid(),
+            FormSysid = form.Sysid,
+            ObjectType = objectType,
+            ObjectName = objectName,
+            SampleBatchNo = batchNo,
+            TotalQuantity = totalQty,
+            ActualSamplingRatio = samplingRatio,
+            SampleQuantity = sampleQty,
+            TemplateSamplingRatio = templateRatio,
+            CheckResult = "OK"
+        };
+        _db.Db.Insertable(obj).ExecuteCommand();
+        return Task.FromResult(obj);
+    }
+}

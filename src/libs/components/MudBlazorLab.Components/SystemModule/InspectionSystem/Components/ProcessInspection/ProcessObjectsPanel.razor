@@ -1,0 +1,50 @@
+@using global::InspectionSystem.Models
+@using global::InspectionSystem.Services
+@using MudBlazor
+@namespace MudBlazorLab.Components.SystemModule.InspectionSystem.Components.ProcessInspection
+
+<MudOverlay @bind-Visible="@Visible" DarkBackground="true" Class="d-flex align-center justify-center"
+            Style="position:fixed;inset:0;z-index:6400;">
+    <MudPaper Elevation="24" Class="pa-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">对象：@(Form?.FormNo)</MudText>
+            <MudText Typo="Typo.subtitle2">工单：@(Form?.WorkCenter)</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(AllowAddDetail)"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="NewObject">新增对象</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Close">关闭</MudButton>
+        </MudStack>
+        <MudDataGrid @ref="InspectionObjectGrid" T="InspectionObjectView" Items="@_objectsView" Bordered="true"
+                     Dense="true" Hover="true" Filterable="true" FixedHeader="true" Height="65vh" RowsPerPage="@_objPageSize"
+                     RowClick="OnObjectRowClickView" SortMode="SortMode.Multiple">
+            <Columns>
+                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.ObjectType)" Title="对象类型" />
+                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.ObjectName)" Title="对象名称" />
+                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.CarrierName)" Title="载具名称" />
+                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.SampleBatchNo)" Title="批次号" />
+                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.CheckResult)" Title="结果" />
+                <PropertyColumn T="InspectionObjectView" TProperty="DateTime ?" Property="@(x => x.CreatedAt)" Title="创建日期" />
+                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.CreateUser)" Title="创建人" />
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="InspectionObjectView" PageSizeOptions="@_objPageOptions" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+</MudOverlay>
+
+<MudDialog @bind-Visible="_dlgObject">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudAutocomplete T="string" @bind-Value="_objectType" Label="对象类型" Placeholder="对象类型"
+                             SearchFunc="SearchObjectTypes" CoerceText="true" CoerceValue="true" Clearable="true" Dense="true" />
+            <MudTextField @bind-Value="_objectName" Label="对象名称" Placeholder="对象名称" Required="true" />
+            <MudTextField @bind-Value="_carrierName" Label="载具名称" Placeholder="载具名称" />
+            <MudTextField @bind-Value="_batchNo" Label="批次号" Placeholder="批次号" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => _dlgObject = false)">取消</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveObject">确定</MudButton>
+    </DialogActions>
+</MudDialog>

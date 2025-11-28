@@ -4,15 +4,13 @@ using MudBlazor;
 using Microsoft.AspNetCore.Components;
 using System.Linq.Expressions;
 
-namespace MudBlazorLab.Components.Components.InspectionPanel;
+namespace MudBlazorLab.Components.SystemModule.InspectionSystem.Components.ProcessInspection;
 
-public partial class InspectionDocList : ComponentBase {
-  [Parameter] public FormTable FormType { get; set; }
-
+public partial class ProcessDocList : ComponentBase {
   [Inject] IInspectionConfigService ConfigSvc { get; set; }
   [Inject] IInspectionFormService FormSvc { get; set; }
   [Inject] IInspectionFacade Facade { get; set; }
-  [Inject] InspectionSystem.Data.InspectionDb Db { get; set; }
+  [Inject] global::InspectionSystem.Data.InspectionDb Db { get; set; }
 
   MudDataGrid<InspectionForm> InspectionDocGrid;
   int _pageSize = 10;
@@ -32,7 +30,7 @@ public partial class InspectionDocList : ComponentBase {
   }
   DocFormState Form = new();
   bool _canSubmitDoc => !string.IsNullOrWhiteSpace(Form.Template) && !string.IsNullOrWhiteSpace(Form.Line)
-      && !string.IsNullOrWhiteSpace(Form.DocNumber) && !string.IsNullOrWhiteSpace(Form.Creator);
+      && !string.IsNullOrWhiteSpace(Form.DocNumber) && !string.IsNullOrWhiteSpace(Form.Creator) && Form.WorkOrders.Any();
   bool _openObjectsPanel;
 
   protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -43,7 +41,7 @@ public partial class InspectionDocList : ComponentBase {
 
   async Task NewDoc() {
     Form = new();
-    Form.DocNumber = await FormSvc.GenerateFormNoAsync(FormType);
+    Form.DocNumber = await FormSvc.GenerateFormNoAsync(FormTable.过程检验单);
     _dlgDoc = true;
     _workOrderOptionsAll = (await ConfigSvc.GetWorkOrderNamesAsync()).ToList();
   }
@@ -53,7 +51,7 @@ public partial class InspectionDocList : ComponentBase {
       Sysid = Guid.NewGuid(),
       FormTemplateName = Form.Template,
       FormNo = Form.DocNumber,
-      FormType = FormType.ToString(),
+      FormType = FormTable.过程检验单.ToString(),
       ProductName = Form.Line,
       WorkCenter = string.Join(",", Form.WorkOrders.Select(x => x.WorkOrder)),
       CreateUser = Form.Creator,
@@ -67,7 +65,7 @@ public partial class InspectionDocList : ComponentBase {
   }
 
   async Task<IEnumerable<string>> SearchTemplates(string value, CancellationToken _) {
-    var list = await ConfigSvc.GetTemplateNamesByFormTypeAsync(FormType.ToString());
+    var list = await ConfigSvc.GetTemplateNamesByFormTypeAsync(FormTable.开班点检单.ToString());
     return await Filter(list, value);
   }
   async Task<IEnumerable<string>> SearchLines(string value, CancellationToken _) => await Filter(await ConfigSvc.GetProductionLineNamesAsync(), value);
@@ -100,7 +98,7 @@ public partial class InspectionDocList : ComponentBase {
   async Task<GridData<InspectionForm>> LoadDocs(GridState<InspectionForm> state) {
     var filters = InspectionDocGrid.FilterDefinitions;
     var predicate = FilterHelper<InspectionForm>.BuildExpression(filters);
-    Expression<Func<InspectionForm, bool>> typeFilter = x => x.FormType == FormType.ToString();
+    Expression<Func<InspectionForm, bool>> typeFilter = x => x.FormType == FormTable.过程检验单.ToString();
     var finalFilter = FilterHelper<InspectionForm>.And(typeFilter, predicate);
     using var repo = new Repository<InspectionForm>(Db.Db);
     var result = await repo.LoadGridDataAsync(

@@ -91,6 +91,12 @@ public class InspectionFormObject
   [SugarColumn(Length = 40, ColumnName = "objectName")]
   public string ObjectName { get; set; }
 
+  [SugarColumn(Length = 40, ColumnName = "CarrierName", IsNullable = true)]
+  public string? CarrierName { get; set; }
+
+  [SugarColumn(Length = 40, ColumnName = "SampleBatchNo", IsNullable = true)]
+  public string? SampleBatchNo { get; set; }
+
   /// <summary>
   /// 模版定义总量
   /// </summary>

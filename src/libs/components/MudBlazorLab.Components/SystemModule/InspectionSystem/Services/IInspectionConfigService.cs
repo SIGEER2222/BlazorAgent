@@ -14,4 +14,5 @@ public interface IInspectionConfigService {
   Task<List<InspectionFormTemplateObject>> GetTemplateObjectsAsync(string templateName);
   Task<List<InspectionFormTemplateObjectItem>> GetTemplateObjectItemsAsync(Guid templateObjectSysid);
   Task<List<InspectionFormTemplateObjectItem>> GetTemplateObjectItemsAsync(string templateName, string ObjectName);
+  Task<List<InspectionSystem.Models.ErpTicket>> GetErpTicketNosAsync();
 }

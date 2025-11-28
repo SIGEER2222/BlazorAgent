@@ -53,4 +53,11 @@ public static class FilterHelper<T> {
     return Expression.Lambda<Func<T, object>>(body, p);
   }
 
+  public static Expression<Func<T, bool>> And(Expression<Func<T, bool>> left, Expression<Func<T, bool>> right) {
+    var parameter = Expression.Parameter(typeof(T), "x");
+    var leftBody = new ParameterReplacer(left.Parameters[0], parameter).Visit(left.Body);
+    var rightBody = new ParameterReplacer(right.Parameters[0], parameter).Visit(right.Body);
+    var body = Expression.AndAlso(leftBody!, rightBody!);
+    return Expression.Lambda<Func<T, bool>>(body, parameter);
+  }
 }

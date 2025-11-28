@@ -21,6 +21,8 @@ public partial class DetailsPanel : ComponentBase
     [Inject] IInspectionDetailService DetailSvc { get; set; }
     [Inject] IInspectionConfigService ConfigSvc { get; set; }
 
+    MudDataGrid<InspectionFlatRow> InspectionDetailGrid;
+
     List<InspectionFlatRow> _flatRows = new();
     int _detailPageSize = 15;
     int[] _detailPageOptions = new[] { 15, 30, 60 };
@@ -122,4 +124,3 @@ public partial class DetailsPanel : ComponentBase
         OnClose.InvokeAsync();
     }
 }
-

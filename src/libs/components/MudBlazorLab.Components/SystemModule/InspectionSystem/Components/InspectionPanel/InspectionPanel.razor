@@ -1,10 +1,22 @@
 @using global::InspectionSystem.Models
 @using MudBlazor
 @using MudBlazorLab.Components.Components.InspectionPanel
+@using MudBlazorLab.Components.SystemModule.InspectionSystem.Components.ProcessInspection
+@using MudBlazorLab.Components.SystemModule.InspectionSystem.Components.IncomingInspection
 @namespace MudBlazorLab.Components.Components.InspectionPanel
 
 <MudStack Spacing="2">
     <MudPaper>
-        <InspectionDocList FormType="FormTable.开班点检单" />
+        <MudTabs>
+            <MudTabPanel Text="过程检验">
+                <ProcessDocList />
+            </MudTabPanel>
+            <MudTabPanel Text="来料检验">
+                <IncomingDocList />
+            </MudTabPanel>
+            <MudTabPanel Text="开班点检">
+                <InspectionDocList FormType="FormTable.开班点检单" />
+            </MudTabPanel>
+        </MudTabs>
     </MudPaper>
 </MudStack>

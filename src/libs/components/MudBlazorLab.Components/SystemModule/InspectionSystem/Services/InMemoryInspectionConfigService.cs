@@ -77,4 +77,7 @@ public class InMemoryInspectionConfigService : IInspectionConfigService {
 
   public Task<List<InspectionFormTemplateObjectItem>> GetTemplateObjectItemsAsync(Guid templateObjectSysid)
     => _db.Db.Queryable<InspectionFormTemplateObjectItem>().Where(x => x.FormTemplateObjectSysid == templateObjectSysid).ToListAsync();
+
+  public Task<List<InspectionSystem.Models.ErpTicket>> GetErpTicketNosAsync()
+    => Task.FromResult(new List<InspectionSystem.Models.ErpTicket>());
 }
