@@ -1,3 +1,4 @@
+using DbModels.DbInit;
 using HmiInspection.Models;
 using InspectionSystem.Models;
 using SqlSugar;
@@ -9,6 +10,5 @@ public class InspectionDb {
 
   public InspectionDb(string connectionString) {
     Db = SqlSugarInit.Db(connectionString);
-    Db.CodeFirst.InitTables(typeof(InspectionFormObjectSampleFlat));
   }
 }

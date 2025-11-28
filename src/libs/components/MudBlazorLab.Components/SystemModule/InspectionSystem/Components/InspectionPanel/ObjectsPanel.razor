@@ -27,6 +27,7 @@
     <MudPaper Elevation="24" Class="pa-4">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudText Typo="Typo.h6">对象：@(Form?.FormNo)</MudText>
+            <MudText Typo="Typo.subtitle2">工单：@(Form?.WorkCenter)</MudText>
             <MudSpacer />
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(AllowAddDetail)"
                 StartIcon="@Icons.Material.Filled.Add" OnClick="NewObject">新增对象</MudButton>
@@ -39,18 +40,19 @@
                 <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.FormTemplateName)"
                     Title="表单模板" />
                 <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.FormNo)" Title="表单单号" />
+                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.WorkCenter)" Title="工单单号" />
                 <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.ProductName)"
                     Title="产线名称" />
                 <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.ObjectType)"
                                 Title="对象类型" />
-                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.ObjectName)"
+                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.ObjectDisplayName)"
                                 Title="对象名称" />
+                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.CheckResult)"
+                                Title="结果" />
                 <PropertyColumn T="InspectionObjectView" TProperty="DateTime?" Property="@(x => x.CreatedAt)"
                     Title="创建日期" />
                 <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.CreateUser)"
                     Title="创建人" />
-                <PropertyColumn T="InspectionObjectView" TProperty="string" Property="@(x => x.CheckResult)"
-                    Title="结果" />
             </Columns>
             <PagerContent>
                 <MudDataGridPager T="InspectionObjectView" PageSizeOptions="@_objPageOptions" />
@@ -146,27 +148,17 @@
         _objects = r;
 
         _objectsView = _objects.Select(x => new InspectionObjectView
-
             {
-
                 Sysid = x.Sysid,
-
                 ObjectType = x.ObjectType,
-
                 ObjectName = x.ObjectName,
-
                 CheckResult = x.CheckResult,
-
                 FormTemplateName = Form!.FormTemplateName,
-
                 FormNo = Form!.FormNo,
-
                 ProductName = Form!.ProductName,
-
                 CreatedAt = Form!.TxnTime,
-
-                CreateUser = Form!.CreateUser
-
+                CreateUser = Form!.CreateUser,
+                WorkCenter = Form!.WorkCenter
             }).ToList();
 
         _currentObject = _objects.FirstOrDefault();
@@ -311,11 +303,15 @@
 
         public string FormNo { get; set; } = string.Empty;
 
+        public string WorkCenter { get; set; } = string.Empty;
+
         public string ProductName { get; set; } = string.Empty;
 
         public DateTime? CreatedAt { get; set; }
 
         public string CreateUser { get; set; } = string.Empty;
+
+        public string ObjectDisplayName => string.IsNullOrWhiteSpace(CheckResult) ? ObjectName : $"{ObjectName} ({CheckResult})";
 
     }
 }

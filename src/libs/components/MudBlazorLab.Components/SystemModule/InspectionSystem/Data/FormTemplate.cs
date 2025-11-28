@@ -4,7 +4,7 @@ namespace HmiInspection.Models;
 /// <summary>
 /// 检验表单模板
 /// </summary>
-[SugarTable("fab_hmi_Inspection_form_template")]
+[SugarTable("fab_hmi_inspection_form_template")]
 public class InspectionFormTemplate {
   [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
   public Guid Sysid { get; set; }
@@ -25,7 +25,7 @@ public class InspectionFormTemplate {
 /// <summary>
 /// 检验表单模板对象
 /// </summary>
-[SugarTable("fab_hmi_Inspection_form_template_object")]
+[SugarTable("fab_hmi_inspection_form_template_object")]
 public class InspectionFormTemplateObject {
   [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
   public Guid Sysid { get; set; }
@@ -61,7 +61,7 @@ public class InspectionFormTemplateObject {
 /// <summary>
 /// 检验表单模板对象项目
 /// </summary>
-[SugarTable("fab_hmi_Inspection_form_template_Object_Item")]
+[SugarTable("fab_hmi_inspection_form_template_object_item")]
 public class InspectionFormTemplateObjectItem {
   [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
   public Guid Sysid { get; set; }

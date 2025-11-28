@@ -5,8 +5,9 @@ using SqlSugar;
 /// <summary>
 /// 检验表单
 /// </summary>
-[SugarTable("fab_hmi_Inspection_form")]
-public class InspectionForm {
+[SugarTable("fab_hmi_inspection_form")]
+public class InspectionForm
+{
   [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
   public Guid Sysid { get; set; }
 
@@ -68,8 +69,9 @@ public class InspectionForm {
 /// <summary>
 /// 检验表单对象
 /// </summary>
-[SugarTable("fab_hmi_Inspection_form_object")]
-public class InspectionFormObject {
+[SugarTable("fab_hmi_inspection_form_object")]
+public class InspectionFormObject
+{
   [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
   public Guid Sysid { get; set; }
 
@@ -123,85 +125,11 @@ public class InspectionFormObject {
 }
 
 /// <summary>
-/// 检验表单对象样品
-/// </summary>
-[SugarTable("fab_hmi_Inspection_form_Object_Sample")]
-public class InspectionFormObjectSample {
-  [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
-  public Guid Sysid { get; set; }
-
-  /// <summary>
-  /// 表单对象sysid
-  /// </summary>
-  [SugarColumn(Length = 40, ColumnName = "formObjectSysid")]
-  public Guid FormObjectSysid { get; set; }
-
-  /// <summary>
-  /// 批次(可为空)
-  /// </summary>
-  [SugarColumn(Length = 40, ColumnName = "SampleBatchNo", IsNullable = true)]
-  public string SampleBatchNo { get; set; }
-
-  /// <summary>
-  /// 载具名称(可为空)
-  /// </summary>
-  [SugarColumn(Length = 40, ColumnName = "CarrierName", IsNullable = true)]
-  public string CarrierName { get; set; }
-
-  /// <summary>
-  /// 检验结果
-  /// </summary>
-  [SugarColumn(Length = 40, ColumnName = "CheckResult")]
-  public string CheckResult { get; set; }
-}
-
-/// <summary>
-/// 检验表单对象样品项目
-/// </summary>
-[SugarTable("fab_hmi_Inspection_form_Object_Sample_Item")]
-public class InspectionFormObjectSampleItem {
-  [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
-  public Guid Sysid { get; set; }
-
-  /// <summary>
-  /// 表单对象sysid
-  /// </summary>
-  [SugarColumn(ColumnName = "formObjectSampleSysid")]
-  public Guid FormObjectSampleSysid { get; set; }
-
-  /// <summary>
-  /// 检查项
-  /// </summary>
-  [SugarColumn(Length = 40, ColumnName = "itemName")]
-  public string ItemName { get; set; }
-
-  /// <summary>
-  /// 数值
-  /// </summary>
-  [SugarColumn(ColumnName = "Value", IsNullable = true)]
-  public decimal? Value { get; set; }
-
-  /// <summary>
-  /// 单位
-  /// </summary>
-  [SugarColumn(Length = 40, ColumnName = "Unit", IsNullable = true)]
-  public string Unit { get; set; }
-
-  /// <summary>
-  /// 检验结果
-  /// </summary>
-  [SugarColumn(Length = 40, ColumnName = "CheckResult")]
-  public string CheckResult { get; set; }
-
-  [SugarColumn(ColumnDataType = "longtext,text,clob", ColumnName = "ItemDescription", IsNullable = true)]
-  public string ItemDescription { get; set; }
-}
-
-/// <summary>
 /// 检验表单对象样品明细（展平）
 /// </summary>
-[SugarTable("fab_hmi_Inspection_form_Object_Sample_Flat")]
-public class InspectionFormObjectSampleFlat {
+[SugarTable("fab_hmi_inspection_form_object_sample_flat")]
+public class InspectionFormObjectSampleFlat
+{
   [SugarColumn(IsPrimaryKey = true, ColumnName = "sysid")]
   public Guid Sysid { get; set; }
 
@@ -252,4 +180,7 @@ public class InspectionFormObjectSampleFlat {
   /// </summary>
   [SugarColumn(ColumnDataType = "longtext,text,clob", ColumnName = "ItemDescription", IsNullable = true)]
   public string? ItemDescription { get; set; }
+
+  [SugarColumn(ColumnName = "BatchIndex", IsNullable = true)]
+  public int? BatchIndex { get; set; }
 }
