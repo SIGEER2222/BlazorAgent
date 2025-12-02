@@ -1,0 +1,64 @@
+@page "/schedulers-demo"
+@inject RxLearn.Web.Infrastructure.Services.IDemoClockService Clock
+@implements System.IDisposable
+
+<PageTitle>Schedulers</PageTitle>
+<MudText Typo="Typo.h4">Schedulers Demo</MudText>
+
+<MudStack Spacing="2">
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">Background compute + UI update</MudText>
+    <MudChipSet T="string">
+      <MudChip T="string" Color="Color.Primary" Text="SelectMany" />
+      <MudChip T="string" Color="Color.Primary" Text="SubscribeOn(TaskPool)" />
+      <MudChip T="string" Color="Color.Secondary" Text="ObserveOn(UI)" />
+    </MudChipSet>
+    <MudSlider T="int" Min="100" Max="2000" ValueChanged="@OnDelayChanged" Value="@delayMs" />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Start">Start</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Stop">Stop</MudButton>
+    <MudText Typo="Typo.body1">Result: @latest</MudText>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: Task.Run + Delay + UI update</MudText>
+    <MudButton Variant="Variant.Outlined" Color="Color.Info" OnClick="StartImperative">Start Imperative</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="StopImperative">Stop Imperative</MudButton>
+    <MudText Typo="Typo.body2">Result: @latestImperative</MudText>
+  </MudPaper>
+</MudStack>
+
+@code {
+  private System.IDisposable? sub;
+  private int delayMs = 500;
+  private long latest;
+  private long latestImperative;
+  private System.Threading.Timer? imperativeTimer;
+
+  private void OnDelayChanged(int v) { delayMs = v; }
+
+  private void Start()
+  {
+    Stop();
+    sub = Clock.Ticks
+      .SelectMany(x => System.Reactive.Linq.Observable.FromAsync(async () => { await Task.Delay(delayMs); return x * x; }))
+      .SubscribeOn(System.Reactive.Concurrency.TaskPoolScheduler.Default)
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { latest = v; StateHasChanged(); });
+  }
+
+  private void StartImperative()
+  {
+    StopImperative();
+    long c = 0;
+    imperativeTimer = new System.Threading.Timer(async _ =>
+    {
+      c++;
+      await Task.Delay(delayMs);
+      latestImperative = c * c;
+      await InvokeAsync(StateHasChanged);
+    }, null, 0, 500);
+  }
+
+  private void StopImperative() { imperativeTimer?.Dispose(); }
+
+  private void Stop() { sub?.Dispose(); }
+  public void Dispose() { Stop(); StopImperative(); }
+}

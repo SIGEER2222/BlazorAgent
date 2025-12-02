@@ -1,0 +1,229 @@
+@page "/operators-demo"
+@inject RxLearn.Web.Infrastructure.Services.IDemoClockService Clock
+@implements System.IDisposable
+
+<PageTitle>Operators</PageTitle>
+<MudText Typo="Typo.h4">Operators Demo</MudText>
+
+<MudStack Spacing="2">
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">Select + Where</MudText>
+    <MudChipSet T="string">
+      <MudChip T="string" Color="Color.Primary" Text="Select" />
+      <MudChip T="string" Color="Color.Primary" Text="Where" />
+      <MudChip T="string" Color="Color.Secondary" Text="ObserveOn(UI)" />
+    </MudChipSet>
+    <MudText Typo="Typo.caption">Rx: Ticks.Select(x => x * x).Where(even)</MudText>
+    <MudText Typo="Typo.body1">Latest: @selectWhereLatest</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartSelectWhere">Start</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StopSelectWhere">Stop</MudButton>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: square then filter on timer</MudText>
+    <MudText Typo="Typo.body2">Latest: @selectWhereImperative</MudText>
+    <MudStack Row="true" Spacing="1">
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="StartImperativeSelectWhere">Start</MudButton>
+      <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StopImperativeSelectWhere">Stop</MudButton>
+    </MudStack>
+  </MudPaper>
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">Merge</MudText>
+    <MudStack Row="true" Spacing="1">
+      <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ClickA">Click A</MudButton>
+      <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="ClickB">Click B</MudButton>
+    </MudStack>
+    <MudText Typo="Typo.body1">Merged: @mergedLatest</MudText>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: handle two buttons and append</MudText>
+    <MudText Typo="Typo.body2">Merged: @mergedLatestImperative</MudText>
+  </MudPaper>
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">CombineLatest</MudText>
+    <MudChipSet T="string">
+      <MudChip T="string" Color="Color.Primary" Text="CombineLatest" />
+    </MudChipSet>
+    <MudSlider T="int" Min="0" Max="100" ValueChanged="@OnAChanged" Value="@a" />
+    <MudSlider T="int" Min="0" Max="100" ValueChanged="@OnBChanged" Value="@b" />
+    <MudText Typo="Typo.body1">Sum: @combineLatest</MudText>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: sum on value changed</MudText>
+    <MudText Typo="Typo.body2">Sum: @imperativeSum</MudText>
+  </MudPaper>
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">Switch</MudText>
+    <MudSelect T="string" ValueChanged="@(v => OnSourceChanged(v))" Value="@selected">
+      <MudSelectItem Value="@("slow")">slow</MudSelectItem>
+      <MudSelectItem Value="@("fast")">fast</MudSelectItem>
+      <MudSelectItem Value="@("random")">random</MudSelectItem>
+    </MudSelect>
+    <MudText Typo="Typo.body1">Switched: @switchLatest</MudText>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: cancel previous timer and start new</MudText>
+    <MudText Typo="Typo.body2">Switched: @switchLatestImperative</MudText>
+  </MudPaper>
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">Scan + Buffer</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Inc">Inc</MudButton>
+    <MudSlider T="int" Min="1" Max="10" ValueChanged="@OnBufferSecChanged" Value="@bufferSeconds" />
+    <MudText Typo="Typo.body1">Sum: @scanSum</MudText>
+    <MudText Typo="Typo.body2">Buffered: @bufferedDisplay</MudText>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: increment and flush by timer</MudText>
+    <MudText Typo="Typo.body2">Sum: @scanSumImperative</MudText>
+    <MudText Typo="Typo.body2">Buffered: @bufferedImperativeDisplay</MudText>
+  </MudPaper>
+</MudStack>
+
+@code {
+  private System.IDisposable? selectWhereSub;
+  private long selectWhereLatest;
+  private long selectWhereImperative;
+  private System.Threading.Timer? imperativeSelectWhereTimer;
+  private readonly System.Reactive.Subjects.Subject<string> clicksA = new();
+  private readonly System.Reactive.Subjects.Subject<string> clicksB = new();
+  private string mergedLatest = string.Empty;
+  private System.IDisposable? mergeSub;
+  private string mergedLatestImperative = string.Empty;
+  private readonly System.Reactive.Subjects.BehaviorSubject<int> aSubject = new(0);
+  private readonly System.Reactive.Subjects.BehaviorSubject<int> bSubject = new(0);
+  private int a;
+  private int b;
+  private int combineLatest;
+  private int imperativeSum;
+  private System.IDisposable? combineSub;
+  private readonly System.Reactive.Subjects.Subject<IObservable<int>> sourceSelector = new();
+  private string selected = "slow";
+  private int switchLatest;
+  private int switchLatestImperative;
+  private System.Threading.Timer? switchTimer;
+  private System.IDisposable? switchSub;
+  private readonly System.Reactive.Subjects.Subject<int> incSubject = new();
+  private int scanSum;
+  private int bufferSeconds = 3;
+  private string bufferedDisplay = string.Empty;
+  private System.IDisposable? scanSub;
+  private System.IDisposable? bufferSub;
+  private int scanSumImperative;
+  private string bufferedImperativeDisplay = string.Empty;
+  private System.Threading.Timer? bufferTimer;
+
+  protected override void OnInitialized()
+  {
+    mergeSub = clicksA.Merge(clicksB)
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { mergedLatest = v; StateHasChanged(); });
+    
+    combineSub = aSubject.CombineLatest(bSubject, (x, y) => x + y)
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { combineLatest = v; StateHasChanged(); });
+
+    switchSub = sourceSelector.Switch()
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { switchLatest = v; StateHasChanged(); });
+
+    SelectSource("slow");
+
+    scanSub = incSubject.Scan(0, (acc, _) => acc + 1)
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { scanSum = v; StateHasChanged(); });
+
+    BuildBuffer();
+    BuildBufferImperative();
+  }
+
+  private void StartSelectWhere()
+  {
+    selectWhereSub = Clock.Ticks
+      .Select(x => x * x)
+      .Where(x => x % 2 == 0)
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { selectWhereLatest = v; StateHasChanged(); });
+  }
+  private void StopSelectWhere() { selectWhereSub?.Dispose(); }
+  private void StartImperativeSelectWhere()
+  {
+    StopImperativeSelectWhere();
+    long counter = 0;
+    imperativeSelectWhereTimer = new System.Threading.Timer(_ =>
+    {
+      counter++;
+      var sq = counter * counter;
+      if (sq % 2 == 0)
+      {
+        selectWhereImperative = sq;
+        InvokeAsync(StateHasChanged);
+      }
+    }, null, 0, 500);
+  }
+  private void StopImperativeSelectWhere() { imperativeSelectWhereTimer?.Dispose(); }
+
+  private void ClickA() => clicksA.OnNext("A" + DateTime.Now.ToString("HH:mm:ss"));
+  private void ClickB() => clicksB.OnNext("B" + DateTime.Now.ToString("HH:mm:ss"));
+  
+  private void AppendImperative(string tag)
+  {
+    mergedLatestImperative = tag + DateTime.Now.ToString("HH:mm:ss");
+  }
+
+  private void OnAChanged(int value) { a = value; aSubject.OnNext(value); }
+  private void OnBChanged(int value) { b = value; bSubject.OnNext(value); }
+  private void OnAChangedImperative(int value) { a = value; imperativeSum = a + b; }
+  private void OnBChangedImperative(int value) { b = value; imperativeSum = a + b; }
+
+  private void OnSourceChanged(string value) { selected = value; SelectSource(value); }
+  private void SelectSource(string key)
+  {
+    IObservable<int> src = key switch
+    {
+      "slow" => Clock.Ticks.Select(x => (int)x),
+      "fast" => System.Reactive.Linq.Observable.Interval(TimeSpan.FromMilliseconds(200)).Select(x => (int)x),
+      _ => System.Reactive.Linq.Observable.Interval(TimeSpan.FromMilliseconds(400)).Select(_ => Random.Shared.Next(0, 100))
+    };
+    sourceSelector.OnNext(src);
+  }
+  private void OnSourceChangedImperative(string value)
+  {
+    selected = value;
+    switchTimer?.Dispose();
+    switchTimer = value switch
+    {
+      "slow" => new System.Threading.Timer(_ => { switchLatestImperative++; InvokeAsync(StateHasChanged); }, null, 0, 1000),
+      "fast" => new System.Threading.Timer(_ => { switchLatestImperative++; InvokeAsync(StateHasChanged); }, null, 0, 200),
+      _ => new System.Threading.Timer(_ => { switchLatestImperative = Random.Shared.Next(0, 100); InvokeAsync(StateHasChanged); }, null, 0, 400)
+    };
+  }
+
+  private void Inc() => incSubject.OnNext(1);
+  private void OnBufferSecChanged(int sec) { bufferSeconds = sec; BuildBuffer(); }
+  private void BuildBuffer()
+  {
+    bufferSub?.Dispose();
+    bufferSub = incSubject.Buffer(TimeSpan.FromSeconds(bufferSeconds))
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(batch => { bufferedDisplay = string.Join(",", batch); StateHasChanged(); });
+  }
+  private void BuildBufferImperative()
+  {
+    bufferTimer?.Dispose();
+    var store = new List<int>();
+    bufferTimer = new System.Threading.Timer(_ =>
+    {
+      bufferedImperativeDisplay = string.Join(",", store);
+      store.Clear();
+      InvokeAsync(StateHasChanged);
+    }, null, bufferSeconds * 1000, bufferSeconds * 1000);
+    incSubject.Subscribe(v => { scanSumImperative += 1; store.Add(v); });
+  }
+
+  public void Dispose()
+  {
+    selectWhereSub?.Dispose();
+    mergeSub?.Dispose();
+    combineSub?.Dispose();
+    switchSub?.Dispose();
+    scanSub?.Dispose();
+    bufferSub?.Dispose();
+    imperativeSelectWhereTimer?.Dispose();
+    switchTimer?.Dispose();
+    bufferTimer?.Dispose();
+  }
+}

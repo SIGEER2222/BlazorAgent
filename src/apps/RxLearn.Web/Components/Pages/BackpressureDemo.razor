@@ -1,0 +1,100 @@
+@page "/backpressure-demo"
+@implements System.IDisposable
+
+<PageTitle>Backpressure</PageTitle>
+<MudText Typo="Typo.h4">Backpressure Demo</MudText>
+
+<MudStack Spacing="2">
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">High-frequency clicks</MudText>
+    <MudChipSet T="string">
+      <MudChip T="string" Color="Color.Primary" Text="Throttle" />
+      <MudChip T="string" Color="Color.Primary" Text="Sample" />
+      <MudChip T="string" Color="Color.Primary" Text="Buffer" />
+    </MudChipSet>
+    <MudStack Row="true" Spacing="1">
+      <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Spam">Spam</MudButton>
+      <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Stop">Stop</MudButton>
+    </MudStack>
+    <MudSlider T="int" Min="100" Max="2000" ValueChanged="@OnMsChanged" Value="@ms" />
+    <MudText Typo="Typo.body1">Throttle: @throttleLatest</MudText>
+    <MudText Typo="Typo.body1">Debounce: @debounceLatest</MudText>
+    <MudText Typo="Typo.body1">Sample: @sampleLatest</MudText>
+    <MudText Typo="Typo.body2">Buffer: @bufferDisplay</MudText>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: timestamp gating / sample timer / list flush</MudText>
+    <MudText Typo="Typo.body2">Throttle: @throttleImperative</MudText>
+    <MudText Typo="Typo.body2">Sample: @sampleImperative</MudText>
+    <MudText Typo="Typo.body2">Buffer: @bufferImperative</MudText>
+  </MudPaper>
+</MudStack>
+
+@code {
+  private readonly System.Reactive.Subjects.Subject<int> clicks = new();
+  private int counter;
+  private int ms = 500;
+  private System.IDisposable? spamTimer;
+  private int throttleLatest; private int debounceLatest; private int sampleLatest; private string bufferDisplay = string.Empty;
+  private System.IDisposable? throttleSub; private System.IDisposable? debounceSub; private System.IDisposable? sampleSub; private System.IDisposable? bufferSub;
+  private int throttleImperative; private int sampleImperative; private string bufferImperative = string.Empty;
+  private DateTime lastThrottleTime = DateTime.MinValue;
+  private System.Threading.Timer? sampleTimer; private System.Threading.Timer? bufferTimer;
+  private int lastClick; private List<int> bufferStore = new();
+
+  protected override void OnInitialized()
+  {
+    throttleSub = clicks.Throttle(TimeSpan.FromMilliseconds(ms))
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { throttleLatest = v; StateHasChanged(); });
+
+    debounceSub = clicks.Throttle(TimeSpan.FromMilliseconds(ms))
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { debounceLatest = v; StateHasChanged(); });
+
+    sampleSub = clicks.Sample(TimeSpan.FromMilliseconds(ms))
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { sampleLatest = v; StateHasChanged(); });
+
+    bufferSub = clicks.Buffer(TimeSpan.FromMilliseconds(ms))
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(batch => { bufferDisplay = string.Join(",", batch); StateHasChanged(); });
+
+    sampleTimer = new System.Threading.Timer(_ => { sampleImperative = lastClick; InvokeAsync(StateHasChanged); }, null, ms, ms);
+    bufferTimer = new System.Threading.Timer(_ => { bufferImperative = string.Join(",", bufferStore); bufferStore.Clear(); InvokeAsync(StateHasChanged); }, null, ms, ms);
+    clicks.Subscribe(v =>
+    {
+      var now = DateTime.UtcNow;
+      if ((now - lastThrottleTime).TotalMilliseconds >= ms)
+      {
+        throttleImperative = v; lastThrottleTime = now; InvokeAsync(StateHasChanged);
+      }
+      lastClick = v; bufferStore.Add(v);
+    });
+  }
+
+  private void Spam()
+  {
+    Stop();
+    spamTimer = System.Reactive.Linq.Observable.Interval(TimeSpan.FromMilliseconds(50))
+      .Subscribe(_ => clicks.OnNext(++counter));
+  }
+
+  private void Stop() { spamTimer?.Dispose(); }
+
+  private void OnMsChanged(int value)
+  {
+    ms = value;
+    throttleSub?.Dispose();
+    debounceSub?.Dispose();
+    sampleSub?.Dispose();
+    bufferSub?.Dispose();
+    OnInitialized();
+  }
+
+  public void Dispose()
+  {
+    Stop();
+    throttleSub?.Dispose(); debounceSub?.Dispose(); sampleSub?.Dispose(); bufferSub?.Dispose();
+    sampleTimer?.Dispose(); bufferTimer?.Dispose();
+  }
+}

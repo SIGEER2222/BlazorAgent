@@ -1,0 +1,34 @@
+@page "/subjects-demo"
+@inject RxLearn.Web.Infrastructure.Services.ISubjectHub Hub
+@implements System.IDisposable
+
+<PageTitle>Subjects</PageTitle>
+<MudText Typo="Typo.h4">Subjects Demo</MudText>
+<MudChipSet T="string">
+  <MudChip T="string" Color="Color.Primary" Text="BehaviorSubject" />
+  <MudChip T="string" Color="Color.Secondary" Text="ObserveOn(UI)" />
+</MudChipSet>
+<MudText Typo="Typo.body1">Last: @_last</MudText>
+<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Increment">Push</MudButton>
+
+@code {
+  private System.IDisposable? subscription;
+  private int _last;
+
+  protected override void OnInitialized()
+  {
+    subscription = Hub.Behavior
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { _last = v; StateHasChanged(); });
+  }
+
+  private void Increment()
+  {
+    Hub.Push(_last + 1);
+  }
+
+  public void Dispose()
+  {
+    subscription?.Dispose();
+  }
+}

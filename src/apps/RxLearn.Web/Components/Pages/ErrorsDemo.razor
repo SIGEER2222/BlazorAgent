@@ -1,0 +1,155 @@
+@page "/errors-demo"
+@implements System.IDisposable
+
+<PageTitle>Errors</PageTitle>
+<MudText Typo="Typo.h4">Errors & Retry Demo</MudText>
+
+<MudStack Spacing="2">
+  <MudPaper Class="pa-4">
+    <MudChipSet T="string">
+      <MudChip T="string" Color="Color.Primary" Text="Materialize" />
+      <MudChip T="string" Color="Color.Primary" Text="Catch" />
+      <MudChip T="string" Color="Color.Primary" Text="Retry" />
+    </MudChipSet>
+    <MudSlider T="int" Min="1" Max="20" ValueChanged="@OnNChanged" Value="@n" />
+    <MudSlider T="int" Min="0" Max="5" ValueChanged="@OnRetryChanged" Value="@retry" />
+    <MudStack Row="true" Spacing="1">
+      <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartPlain">Plain</MudButton>
+      <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="StartCatch">Catch</MudButton>
+      <MudButton Variant="Variant.Filled" Color="Color.Info" OnClick="StartRetry">Retry</MudButton>
+      <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="Stop">Stop</MudButton>
+    </MudStack>
+    <MudText Typo="Typo.body1">Latest: @latest</MudText>
+    <MudText Typo="Typo.body2">Materialized: @materialized</MudText>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: timer + try/catch + optional retry</MudText>
+    <MudStack Row="true" Spacing="1">
+      <MudButton Variant="Variant.Outlined" Color="Color.Info" OnClick="StartImperativePlain">Plain</MudButton>
+      <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StartImperativeCatch">Catch</MudButton>
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="StartImperativeRetry">Retry</MudButton>
+      <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="StopImperative">Stop</MudButton>
+    </MudStack>
+    <MudText Typo="Typo.body2">Latest: @latestImperative</MudText>
+    <MudText Typo="Typo.body2">Materialized: @materializedImperative</MudText>
+  </MudPaper>
+</MudStack>
+
+@code {
+  private int n = 5;
+  private int retry = 1;
+  private System.IDisposable? sub;
+  private string latest = string.Empty;
+  private string materialized = string.Empty;
+  private string latestImperative = string.Empty;
+  private string materializedImperative = string.Empty;
+  private System.Threading.Timer? imperativeTimer;
+  private int retryLeft;
+
+  private void OnNChanged(int value) { n = value; }
+  private void OnRetryChanged(int value) { retry = value; }
+
+  private IObservable<int> Source()
+  {
+    return System.Reactive.Linq.Observable.Create<int>(observer =>
+    {
+      var c = 0;
+      var timer = new System.Threading.Timer(_ =>
+      {
+        c++;
+        if (c <= n) observer.OnNext(c);
+        else observer.OnError(new Exception("boom"));
+      }, null, 0, 200);
+      return () => timer.Dispose();
+    });
+  }
+
+  private void StartPlain()
+  {
+    Stop();
+    sub = Source()
+      .Materialize()
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(ev =>
+      {
+        materialized = ev.Kind.ToString();
+        latest = ev.HasValue ? ev.Value.ToString() : "";
+        StateHasChanged();
+      });
+  }
+
+  private void StartCatch()
+  {
+    Stop();
+    sub = Source()
+      .Catch((Exception _) => System.Reactive.Linq.Observable.Return(-1))
+      .Materialize()
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(ev =>
+      {
+        materialized = ev.Kind.ToString();
+        latest = ev.HasValue ? ev.Value.ToString() : "";
+        StateHasChanged();
+      });
+  }
+
+  private void StartRetry()
+  {
+    Stop();
+    sub = Source()
+      .Retry(retry)
+      .Materialize()
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(ev =>
+      {
+        materialized = ev.Kind.ToString();
+        latest = ev.HasValue ? ev.Value.ToString() : "";
+        StateHasChanged();
+      });
+  }
+
+  private void Stop() { sub?.Dispose(); }
+  public void Dispose() { Stop(); }
+
+  private void StartImperativePlain()
+  {
+    StopImperative();
+    int c = 0;
+    imperativeTimer = new System.Threading.Timer(_ =>
+    {
+      c++;
+      if (c <= n) { latestImperative = c.ToString(); materializedImperative = "OnNext"; }
+      else { materializedImperative = "OnError"; StopImperative(); }
+      InvokeAsync(StateHasChanged);
+    }, null, 0, 200);
+  }
+
+  private void StartImperativeCatch()
+  {
+    StopImperative();
+    int c = 0;
+    imperativeTimer = new System.Threading.Timer(_ =>
+    {
+      c++;
+      if (c <= n) { latestImperative = c.ToString(); materializedImperative = "OnNext"; }
+      else { latestImperative = (-1).ToString(); materializedImperative = "OnNext"; StopImperative(); }
+      InvokeAsync(StateHasChanged);
+    }, null, 0, 200);
+  }
+
+  private void StartImperativeRetry()
+  {
+    StopImperative();
+    int c = 0;
+    retryLeft = retry;
+    imperativeTimer = new System.Threading.Timer(_ =>
+    {
+      c++;
+      if (c <= n) { latestImperative = c.ToString(); materializedImperative = "OnNext"; }
+      else if (retryLeft > 0) { retryLeft--; c = 0; materializedImperative = "OnNext"; }
+      else { materializedImperative = "OnError"; StopImperative(); }
+      InvokeAsync(StateHasChanged);
+    }, null, 0, 200);
+  }
+
+  private void StopImperative() { imperativeTimer?.Dispose(); }
+}

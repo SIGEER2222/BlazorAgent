@@ -1,0 +1,146 @@
+@page "/cold-hot"
+@inject RxLearn.Web.Infrastructure.Services.IDemoClockService Clock
+@implements System.IDisposable
+
+<PageTitle>Cold vs Hot</PageTitle>
+<MudText Typo="Typo.h4">Cold vs Hot Observable</MudText>
+
+<MudStack Row="true" Spacing="2">
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">Cold</MudText>
+    <MudChipSet T="string">
+      <MudChip T="string" Color="Color.Primary" Text="Observable.Interval" />
+      <MudChip T="string" Color="Color.Secondary" Text="New subscription = new sequence" />
+    </MudChipSet>
+    <MudText Typo="Typo.body1">A: @coldA</MudText>
+    <MudText Typo="Typo.body1">B: @coldB</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartColdA">Start A</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StopColdA">Stop A</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartColdB">Start B</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StopColdB">Stop B</MudButton>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: per-subscriber Timer</MudText>
+    <MudText Typo="Typo.body2">A: @coldImperA</MudText>
+    <MudText Typo="Typo.body2">B: @coldImperB</MudText>
+    <MudStack Row="true" Spacing="1">
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="StartColdImperA">Start A</MudButton>
+      <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StopColdImperA">Stop A</MudButton>
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="StartColdImperB">Start B</MudButton>
+      <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StopColdImperB">Stop B</MudButton>
+    </MudStack>
+  </MudPaper>
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">Hot</MudText>
+    <MudChipSet T="string">
+      <MudChip T="string" Color="Color.Primary" Text="Publish().RefCount()" />
+      <MudChip T="string" Color="Color.Secondary" Text="Shared sequence" />
+    </MudChipSet>
+    <MudText Typo="Typo.body1">A: @hotA</MudText>
+    <MudText Typo="Typo.body1">B: @hotB</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartHotA">Start A</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StopHotA">Stop A</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartHotB">Start B</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StopHotB">Stop B</MudButton>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: shared Timer</MudText>
+    <MudText Typo="Typo.body2">A: @hotImperA</MudText>
+    <MudText Typo="Typo.body2">B: @hotImperB</MudText>
+    <MudStack Row="true" Spacing="1">
+      <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="StartHotImper">Start Shared</MudButton>
+      <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StopHotImper">Stop Shared</MudButton>
+    </MudStack>
+  </MudPaper>
+</MudStack>
+
+@code {
+  private System.IDisposable? coldASub;
+  private System.IDisposable? coldBSub;
+  private System.IDisposable? hotASub;
+  private System.IDisposable? hotBSub;
+  private long coldA;
+  private long coldB;
+  private long hotA;
+  private long hotB;
+  private long coldImperA;
+  private long coldImperB;
+  private long hotImperA;
+  private long hotImperB;
+  private System.Threading.Timer? coldImperATimer;
+  private System.Threading.Timer? coldImperBTimer;
+  private System.Threading.Timer? hotImperTimer;
+  private long hotSharedCounter;
+
+  private static IObservable<long> CreateCold() => System.Reactive.Linq.Observable.Interval(TimeSpan.FromMilliseconds(500));
+  private IObservable<long> Hot => Clock.Ticks;
+
+  private void StartColdA()
+  {
+    coldASub = CreateCold()
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { coldA = v; StateHasChanged(); });
+  }
+  private void StopColdA() { coldASub?.Dispose(); }
+
+  private void StartColdB()
+  {
+    coldBSub = CreateCold()
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { coldB = v; StateHasChanged(); });
+  }
+  private void StopColdB() { coldBSub?.Dispose(); }
+
+  private void StartHotA()
+  {
+    hotASub = Hot
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { hotA = v; StateHasChanged(); });
+  }
+  private void StopHotA() { hotASub?.Dispose(); }
+
+  private void StartHotB()
+  {
+    hotBSub = Hot
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { hotB = v; StateHasChanged(); });
+  }
+  private void StopHotB() { hotBSub?.Dispose(); }
+
+  private void StartColdImperA()
+  {
+    StopColdImperA();
+    long c = 0;
+    coldImperATimer = new System.Threading.Timer(_ => { coldImperA = c++; InvokeAsync(StateHasChanged); }, null, 0, 500);
+  }
+  private void StopColdImperA() { coldImperATimer?.Dispose(); }
+  private void StartColdImperB()
+  {
+    StopColdImperB();
+    long c = 0;
+    coldImperBTimer = new System.Threading.Timer(_ => { coldImperB = c++; InvokeAsync(StateHasChanged); }, null, 0, 500);
+  }
+  private void StopColdImperB() { coldImperBTimer?.Dispose(); }
+
+  private void StartHotImper()
+  {
+    StopHotImper();
+    hotImperTimer = new System.Threading.Timer(_ =>
+    {
+      hotSharedCounter++;
+      hotImperA = hotSharedCounter;
+      hotImperB = hotSharedCounter;
+      InvokeAsync(StateHasChanged);
+    }, null, 0, 500);
+  }
+  private void StopHotImper() { hotImperTimer?.Dispose(); }
+
+  public void Dispose()
+  {
+    coldASub?.Dispose();
+    coldBSub?.Dispose();
+    hotASub?.Dispose();
+    hotBSub?.Dispose();
+    coldImperATimer?.Dispose();
+    coldImperBTimer?.Dispose();
+    hotImperTimer?.Dispose();
+  }
+}

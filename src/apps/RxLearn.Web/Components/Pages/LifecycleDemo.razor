@@ -1,0 +1,61 @@
+@page "/lifecycle-demo"
+@implements System.IDisposable
+
+<PageTitle>Lifecycle</PageTitle>
+<MudText Typo="Typo.h4">Lifecycle & Disposal Demo</MudText>
+
+<MudStack Spacing="2">
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">Create/Dispose subscription</MudText>
+    <MudChipSet T="string">
+      <MudChip T="string" Color="Color.Primary" Text="ObserveOn(UI)" />
+      <MudChip T="string" Color="Color.Primary" Text="Dispose" />
+      <MudChip T="string" Color="Color.Primary" Text="OnCompleted" />
+    </MudChipSet>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Start">Start</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Stop">Stop</MudButton>
+    <MudText Typo="Typo.body1">Latest: @latest</MudText>
+    </MudPaper>
+  <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6">Complete flow</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="Complete">Complete</MudButton>
+    <MudText Typo="Typo.body1">Completed: @completed</MudText>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.caption">Imperative: Timer + Stop/Complete flags</MudText>
+    <MudButton Variant="Variant.Outlined" Color="Color.Info" OnClick="StartImperative">Start Imperative</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="StopImperative">Stop Imperative</MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="CompleteImperative">Complete Imperative</MudButton>
+    <MudText Typo="Typo.body2">Latest: @latestImperative</MudText>
+    <MudText Typo="Typo.body2">Completed: @completedImperative</MudText>
+  </MudPaper>
+</MudStack>
+
+@code {
+  private System.IDisposable? sub;
+  private readonly System.Reactive.Subjects.Subject<int> subject = new();
+  private int latest;
+  private bool completed;
+  private System.Threading.Timer? imperativeTimer;
+  private int latestImperative;
+  private bool completedImperative;
+
+  private void Start()
+  {
+    Stop();
+    sub = subject
+      .ObserveOn(System.Threading.SynchronizationContext.Current!)
+      .Subscribe(v => { latest = v; StateHasChanged(); }, _ => { completed = true; StateHasChanged(); }, () => { completed = true; StateHasChanged(); });
+    System.Reactive.Linq.Observable.Interval(TimeSpan.FromMilliseconds(300)).Subscribe(x => subject.OnNext((int)x));
+  }
+
+  private void Stop() { sub?.Dispose(); }
+  private void Complete() { subject.OnCompleted(); }
+  private void StartImperative()
+  {
+    StopImperative(); completedImperative = false;
+    imperativeTimer = new System.Threading.Timer(_ => { if (!completedImperative) { latestImperative++; InvokeAsync(StateHasChanged); } }, null, 0, 300);
+  }
+  private void StopImperative() { imperativeTimer?.Dispose(); }
+  private void CompleteImperative() { completedImperative = true; }
+  public void Dispose() { Stop(); StopImperative(); }
+}
